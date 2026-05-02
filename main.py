@@ -41,7 +41,10 @@ gemini_gateway = GeminiCLIAdapter(
     shell=shell_runner, 
     fs=file_system,
     binary_path=settings.GEMINI_BINARY_PATH,
-    api_key=settings.GEMINI_API_KEY
+    auth_method=settings.GEMINI_AUTH_METHOD,
+    api_key=settings.GEMINI_API_KEY,
+    vertex_project=settings.VERTEX_PROJECT_ID,
+    vertex_location=settings.VERTEX_LOCATION
 )
 telegram_gateway = TelegramAdapter(token=settings.TELEGRAM_BOT_TOKEN)
 tunnel_runner = CloudflareTunnelRunner(

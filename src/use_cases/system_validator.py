@@ -25,6 +25,12 @@ class SystemValidatorService:
         """Valida credenciales, red y túneles devolviendo un reporte detallado."""
         report = ValidationReport()
         report.add_info("Iniciando validación de sistema (Deep Health Check)...")
+
+        # 0. Reportar Estrategia de IA
+        from src.interface_adapters.gateways.gemini_gateway import GeminiCLIAdapter
+        for v in self.validators:
+            if isinstance(v, GeminiCLIAdapter):
+                report.add_info(f"Estrategia de IA: {v.auth_method.upper()}")
         
         # 1. Validar Credenciales (Gemini, Telegram)
         for validator in self.validators:

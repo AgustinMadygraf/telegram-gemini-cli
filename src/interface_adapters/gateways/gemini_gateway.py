@@ -18,31 +18,58 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
         shell: ShellGateway, 
         fs: FileSystemGateway,
         binary_path: str = "/usr/local/bin/gemini",
-        api_key: Optional[str] = None
+        auth_method: str = "api_key",
+        api_key: Optional[str] = None,
+        vertex_project: Optional[str] = None,
+        vertex_location: str = "us-central1"
     ):
         self.shell = shell
         self.fs = fs
         self.binary_path = binary_path
+        self.auth_method = auth_method
         self.api_key = api_key
+        self.vertex_project = vertex_project
+        self.vertex_location = vertex_location
         # Centralizamos en la nueva carpeta storage
         self.base_session_path = os.path.abspath("storage/sessions")
-        self._ensure_base_path()
-
-    def _ensure_base_path(self):
-        """Asegura que el directorio de sesiones exista."""
         self.fs.ensure_dir(self.base_session_path)
 
     def _get_env_for_session(self, session_id: str) -> dict:
-        """Genera el entorno aislado para la sesión."""
-        # Sanitizar session_id para evitar Path Traversal
+        """Genera el entorno aislado y configura la autenticación según la estrategia."""
         safe_id = "".join(c for c in session_id if c.isalnum() or c in ("_", "-"))
         session_path = os.path.join(self.base_session_path, safe_id)
+        self.fs.ensure_dir(session_path)
         
         env = {"GEMINI_CLI_HOME": session_path}
-        if self.api_key:
+        
+        if self.auth_method == "api_key" and self.api_key:
             env["GEMINI_API_KEY"] = self.api_key
             
+        elif self.auth_method == "vertex_ai":
+            env["GOOGLE_GENAI_USE_VERTEXAI"] = "true"
+            if self.vertex_project:
+                env["GOOGLE_CLOUD_PROJECT"] = self.vertex_project
+            env["GOOGLE_CLOUD_LOCATION"] = self.vertex_location
+            
+        elif self.auth_method == "google_auth":
+            self._handle_google_auth_inheritance(session_path)
+            
         return env
+
+    def _handle_google_auth_inheritance(self, session_path: str):
+        """
+        Copia la configuración global de Gemini al entorno de la sesión 
+        para heredar la identidad del usuario sin mezclar historiales.
+        """
+        global_config = os.path.expanduser("~/.gemini/settings.json")
+        target_config_dir = os.path.join(session_path, ".gemini")
+        target_config_file = os.path.join(target_config_dir, "settings.json")
+        
+        if self.fs.exists(global_config) and not self.fs.exists(target_config_file):
+            self.fs.ensure_dir(target_config_dir)
+            # Copiamos el archivo de configuración (identidad)
+            import shutil
+            shutil.copy2(global_config, target_config_file)
 
     async def validate(self) -> bool:
         """Valida la existencia y ejecución del binario delegando al sistema."""
