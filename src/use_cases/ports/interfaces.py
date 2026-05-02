@@ -57,6 +57,16 @@ class TunnelGateway(ABC):
         """Verifica que el túnel esté activo y saludable."""
         pass
 
+    @abstractmethod
+    def start_tunnel(self) -> None:
+        """Inicia el proceso del túnel en segundo plano."""
+        pass
+
+    @abstractmethod
+    def stop_tunnel(self) -> None:
+        """Detiene el proceso del túnel."""
+        pass
+
 class ShellGateway(ABC):
     @abstractmethod
     async def execute(self, args: List[str]) -> Tuple[int, str, str]:

@@ -8,14 +8,16 @@ import sys
 from src.infrastructure.setting.config import settings
 from src.infrastructure.setting.logger import setup_logger
 from src.interface_adapters.gateways.gemini_gateway import GeminiCLIAdapter
+from src.interface_adapters.gateways.gemini_gateway import GeminiCLIAdapter
 from src.interface_adapters.gateways.telegram_gateway import TelegramAdapter
-from src.interface_adapters.gateways.cloudflare_gateway import CloudflareGateway
 from src.interface_adapters.controllers.telegram_controller import TelegramController
 from src.interface_adapters.presenters.telegram_presenter import TelegramPresenter
 from src.infrastructure.fastapi.app import create_app
 from src.infrastructure.shell.asyncio_runner import AsyncioShellRunner
 from src.infrastructure.shell.local_filesystem import LocalFileSystem
 from src.infrastructure.shell.port_guard import PortGuard
+from src.infrastructure.shell.cloudflare_runner import CloudflareTunnelRunner
+import atexit
 from src.use_cases.process_message import ProcessMessageUseCase
 from src.use_cases.system_validator import SystemValidatorService
 
@@ -33,16 +35,19 @@ gemini_gateway = GeminiCLIAdapter(
     binary_path=settings.GEMINI_BINARY_PATH
 )
 telegram_gateway = TelegramAdapter(token=settings.TELEGRAM_BOT_TOKEN)
-cloudflare_gateway = CloudflareGateway(
-    token=settings.CLOUDFLARE_TOKEN, 
-    webhook_url=settings.WEBHOOK_URL
+tunnel_runner = CloudflareTunnelRunner(
+    tunnel_name="gemini-bridge", 
+    local_url="http://localhost:8000"
 )
 
-# 2. Instanciar Casos de Uso y Servicios
+# Garantizar cierre del túnel al salir
+atexit.register(tunnel_runner.stop_tunnel)
+
+# --- USE CASES ---
 validator_service = SystemValidatorService(
     validators=[gemini_gateway, telegram_gateway],
     messenger=telegram_gateway,
-    tunnel=cloudflare_gateway,
+    tunnel=tunnel_runner,
     webhook_url=settings.WEBHOOK_URL,
     secret_token=settings.WEBHOOK_SECRET_TOKEN
 )
@@ -88,8 +93,11 @@ if __name__ == "__main__":
     # 0. Limpiar puerto si es necesario
     PortGuard(port=8000).clean_port()
 
-    # 1. Ejecutar validaciones antes de iniciar el servidor
+    # 1. Iniciar Túnel de Red
+    tunnel_runner.start_tunnel()
+
+    # 2. Ejecutar validaciones antes de iniciar el servidor
     asyncio.run(startup_check())
     
-    # 2. Correr servidor
+    # 3. Correr servidor
     uvicorn.run(app, host="0.0.0.0", port=8000)
