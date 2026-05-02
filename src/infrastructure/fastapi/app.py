@@ -2,8 +2,11 @@
 Path: src/infrastructure/fastapi/app.py
 """
 
+import logging
 from fastapi import FastAPI, Request, BackgroundTasks, Header, HTTPException
 from src.interface_adapters.controllers.telegram_controller import TelegramController
+
+logger = logging.getLogger(__name__)
 
 def create_app(controller: TelegramController):
     app = FastAPI(title="Telegram Gemini CLI Bridge")
@@ -31,9 +34,11 @@ def create_app(controller: TelegramController):
             return {"status": "ok"}
 
         except PermissionError:
-            # Traducimos errores de dominio/adaptador a HTTP
+            # La infraestructura decide loguear el fallo de seguridad
+            logger.warning("Intento de webhook con token secreto inválido interceptado en la ruta.")
             raise HTTPException(status_code=403, detail="Forbidden")
         except Exception as e:
+            logger.error(f"Error no controlado en el webhook: {e}")
             raise HTTPException(status_code=500, detail=str(e))
 
     @app.get("/health")

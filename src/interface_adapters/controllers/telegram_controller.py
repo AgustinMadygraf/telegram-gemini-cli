@@ -5,9 +5,6 @@ Path: src/interface_adapters/controllers/telegram_controller.py
 from src.use_cases.process_message import ProcessMessageUseCase
 from src.entities.chat import ChatMessage
 from typing import Optional, Dict, Any
-import logging
-
-logger = logging.getLogger(__name__)
 
 class TelegramController:
     def __init__(self, use_case: ProcessMessageUseCase, secret_token: str):
@@ -17,11 +14,11 @@ class TelegramController:
     async def process_webhook_data(self, data: Dict[str, Any], x_token: Optional[str]) -> Optional[ChatMessage]:
         """
         Valida el secreto y extrae el mensaje del payload de Telegram.
-        No conoce a FastAPI.
+        Puro Python, sin dependencias de logging ni frameworks.
         """
         # 1. Validar Token
         if self.secret_token and x_token != self.secret_token:
-            logger.warning("Intento de webhook con token secreto inválido")
+            # El controlador solo lanza la excepción, no loguea.
             raise PermissionError("Invalid secret token")
 
         # 2. Extraer ChatMessage
