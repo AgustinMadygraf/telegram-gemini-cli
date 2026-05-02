@@ -5,10 +5,8 @@ Bridge asíncrono para vincular Telegram con Gemini CLI (MCP).
 ## Arquitectura
 
 Implementación de **Clean Architecture (Hexagonal)**:
-- **Entities**: Objetos de negocio.
-- **Use Cases & Ports**: Lógica y contratos.
-- **Interface Adapters**: Controllers, Gateways y Presenters.
-- **Infrastructure**: FastAPI, Red y Configuración.
+- **Ports & Adapters**: Desacoplamiento total de Gemini, Telegram y Cloudflare.
+- **Deep Health Check**: Validación obligatoria de credenciales y red en el arranque.
 
 ## Estructura del Código
 
@@ -18,16 +16,16 @@ src/
 ├── use_cases/              # Reglas de aplicación
 │   └── ports/              # Interfaces (Puertos)
 ├── interface_adapters/     # Adaptadores de interfaz
-│   ├── controllers/        # FastAPI -> Use Case
-│   ├── gateways/           # Impl. de Gemini y Telegram
-│   └── presenters/         # Formateadores
+│   ├── controllers/        # Controladores FastAPI
+│   ├── gateways/           # Impl. de Gemini, Telegram y Cloudflare
+│   └── presenters/         # Formateadores de salida
 └── infrastructure/         # Detalles técnicos
-    ├── fastapi/            # Configuración de red
+    ├── fastapi/            # Server setup
     └── setting/            # Configuración y Logging
 ```
 
 ## Ejecución
 
-1. Configurar `.env` (ver `.env.example`).
+1. Configurar `.env` incluyendo `WEBHOOK_URL` y `CLOUDFLARE_TOKEN`.
 2. Activar entorno: `source venv/bin/activate`.
 3. Ejecutar: `python main.py`.

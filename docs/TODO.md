@@ -5,18 +5,17 @@
 ### Fase 1: Estructura y Validación (Completado)
 - [x] Restructuración Clean Architecture (Ports & Adapters).
 - [x] Validación de arranque con Hard Exit.
-- [x] Encabezados de ruta y documentación unificada.
+- [x] Auto-registro de Webhook en Telegram.
 
-### Fase 2: Salud y Red (Prioridad Actual)
-- [ ] Implementar `getWebhookInfo` en el validador de Telegram.
-- [ ] Validar latencia y conectividad del túnel al inicio.
-- [ ] Agregar endpoint de diagnóstico detallado.
+### Fase 2: Red y Túneles (Prioridad Actual)
+- [ ] Incorporar `CLOUDFLARE_TOKEN` en la configuración.
+- [ ] Implementar `CloudflareGateway` para monitoreo de túnel.
+- [ ] Validar latencia de red al inicio.
 
-### Fase 3: Lógica de Aplicación y Presentación
-- [ ] Implementar `TelegramPresenter` (MarkdownV2 escaping).
-- [ ] Manejo de fragmentación inteligente de mensajes largos.
-- [ ] Comando `/reset` para limpiar contexto de Gemini.
+### Fase 3: Capa de Presentación
+- [ ] Implementar `TelegramPresenter` (MarkdownV2).
+- [ ] Manejo de fragmentación de mensajes largos (>4096 caracteres).
 
-### Fase 4: Soporte Multi-usuario y Sesiones
-- [ ] Investigar manejo de sesiones independientes en Gemini CLI.
-- [ ] Implementar persistencia de metadatos de usuario.
+### Fase 4: Experiencia de Usuario
+- [ ] Implementar comando `/reset` (limpieza de contexto).
+- [ ] Implementar comando `/status` (diagnóstico de salud del bot).
