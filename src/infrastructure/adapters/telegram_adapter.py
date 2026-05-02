@@ -1,0 +1,29 @@
+from telegram import Bot
+from src.domain.interfaces import MessagingProviderInterface
+import logging
+
+logger = logging.getLogger(__name__)
+
+class TelegramAdapter(MessagingProviderInterface):
+    def __init__(self, token: str):
+        self.bot = Bot(token=token)
+
+    async def send_message(self, chat_id: int, text: str) -> bool:
+        try:
+            # Manejo de fragmentación básica si el mensaje es muy largo
+            if len(text) > 4000:
+                chunks = [text[i:i+4000] for i in range(0, len(text), 4000)]
+                for chunk in chunks:
+                    await self.bot.send_message(chat_id=chat_id, text=chunk)
+            else:
+                await self.bot.send_message(chat_id=chat_id, text=text)
+            return True
+        except Exception as e:
+            logger.error(f"Error enviando mensaje a Telegram: {e}")
+            return False
+
+    async def set_typing(self, chat_id: int) -> None:
+        try:
+            await self.bot.send_chat_action(chat_id=chat_id, action="typing")
+        except Exception as e:
+            logger.error(f"Error seteando typing: {e}")
