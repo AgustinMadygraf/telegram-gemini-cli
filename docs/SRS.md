@@ -1,50 +1,42 @@
 # Software Requirements Specification (SRS) - Telegram Gemini CLI Bridge
 
 ## 1. Introducción
-El sistema "Telegram Gemini CLI Bridge" actúa como un intermediario entre la API de Telegram y el ejecutable local `gemini-cli`. Su diseño se basa en **Clean Architecture**, **SOLID** y **Domain-Driven Design (DDD)** para garantizar la mantenibilidad y extensibilidad.
+El sistema "Telegram Gemini CLI Bridge" actúa como un intermediario entre la API de Telegram y el ejecutable local `gemini-cli`. Su diseño se basa en **Clean Architecture**, **SOLID** y **Domain-Driven Design (DDD)**.
 
 ## 2. Certezas Técnicas (Technical Certainties)
 
-1. **Entorno Local**: `gemini-cli` es el motor de inferencia y ejecución de herramientas.
-2. **Backends MCP**: Acceso a `xubio` y `woocommerce` a través de la CLI.
-3. **Persistencia**: Uso de `--resume latest` para mantener el contexto del hilo de conversación.
-4. **Seguridad**: Whitelist de `chat_id` como primer nivel de defensa.
+1. **Lenguaje**: Python 3.10+.
+2. **Framework Web**: FastAPI (Uvicorn como servidor ASGI).
+3. **Comunicación**: Webhook de Telegram (HTTPS).
+4. **Infraestructura de Túnel**: Cloudflare Tunnel (`cloudflared`) para exposición segura del entorno local.
+5. **Backend AI**: `gemini-cli` vía subprocesos de Python (`subprocess`).
+6. **Persistencia**: Flag `--resume latest` en Gemini.
 
 ## 3. Arquitectura Limpia (Clean Architecture)
 
-El proyecto se estructurará en capas concéntricas para desacoplar la lógica de negocio de los detalles de infraestructura:
-
 ### Capa de Dominio (Domain)
-- **Entidades**: `Message`, `ChatSession`, `Command`.
-- **Value Objects**: `TelegramId`, `Prompt`.
-- **Interfaces**: `GeminiService`, `ChatProvider`.
+- **Entidades**: `Message`, `ChatSession`.
+- **Value Objects**: `TelegramUserId`, `PromptResponse`.
+- **Interfaces**: `AIEngineInterface`, `MessagingProviderInterface`.
 
-### Capa de Aplicación (Application / Use Cases)
-- **Casos de Uso**: 
-    - `ProcessIncomingMessage`: Coordina la recepción de un mensaje de Telegram y su envío a Gemini.
-    - `ResetChatSession`: Limpia el contexto de la conversación.
-    - `HandleToolOutput`: (Futuro) Gestiona la lógica específica para resultados de herramientas MCP.
+### Capa de Aplicación (Use Cases)
+- `HandleTelegramWebhook`: Orquestador que recibe el evento, valida al usuario y dispara la ejecución en Gemini.
+- `ResetSession`: Comando para limpiar el historial de la sesión.
 
 ### Capa de Infraestructura (Infrastructure)
-- **TelegramProvider**: Implementación concreta usando `Telegraf`.
-- **GeminiCLIProvider**: Adaptador que ejecuta el binario de sistema `gemini`.
-- **PersistenceAdapter**: Manejo de variables de entorno y estados locales.
+- **FastAPIAdapter**: Punto de entrada del Webhook.
+- **GeminiCLIAdapter**: Wrapper de `subprocess.run(["gemini", ...])`.
+- **CloudflareTunnel**: Configuración externa que redirige el tráfico HTTPS al puerto local de FastAPI.
 
-## 4. Principios SOLID Aplicados
+## 4. Diseño del Sistema (Webhook Flow)
 
-- **S (Single Responsibility)**: El adaptador de Gemini solo se encarga de la ejecución del comando; no conoce la lógica de Telegram.
-- **O (Open/Closed)**: El sistema permite añadir nuevos "Providers" de chat (ej: WhatsApp) sin modificar el caso de uso principal.
-- **L (Liskov Substitution)**: Cualquier implementación de `ChatProvider` debe ser intercambiable.
-- **I (Interface Segregation)**: Las interfaces de dominio son específicas para las necesidades de los casos de uso.
-- **D (Dependency Inversion)**: Los casos de uso dependen de interfaces (abstracciones), no de las implementaciones concretas de infraestructura.
+1. **Telegram API** -> [POST Webhook] -> **Cloudflare Edge**.
+2. **Cloudflare Edge** -> [Encrypted Tunnel] -> **Local cloudflared daemon**.
+3. **local cloudflared** -> [Proxy] -> **FastAPI (localhost:8000)**.
+4. **FastAPI** -> [Process] -> **Gemini CLI**.
+5. **Gemini CLI** -> [Response] -> **FastAPI** -> **Telegram API**.
 
-## 5. Diseño del Dominio (DDD)
+## 5. Principios SOLID Aplicados
 
-### Ubiquitous Language
-- **Prompt**: El texto procesado que se envía a Gemini.
-- **Turn**: Una interacción completa (Mensaje del usuario -> Respuesta de la IA).
-- **Session**: El hilo continuo de "Turns" persistido en Gemini.
-
-### Bounded Contexts
-- **Chat Context**: Gestión de usuarios, comandos de Telegram y formatos de salida.
-- **AI Context**: Gestión de la ejecución de Gemini, manejo de MCPs y control de sesiones.
+- **Dependency Inversion**: El caso de uso no conoce a FastAPI ni a `cloudflared`. Solo conoce la interfaz que recibe un mensaje.
+- **Single Responsibility**: El adaptador de Gemini se encarga exclusivamente de parsear el stdout/stderr de la CLI.

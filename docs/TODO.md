@@ -1,28 +1,26 @@
-# TODO - Telegram Gemini CLI Bridge (Clean Architecture Edition)
+# TODO - Telegram Gemini CLI Bridge (Python + FastAPI Edition)
 
 ## Roadmap de Desarrollo
 
-### Fase 1: Estructura de Dominio y Aplicación
-- [ ] Definir Entidades y Value Objects de dominio (`Chat`, `Message`, `Session`).
-- [ ] Definir interfaces de servicios (contratos para `ChatProvider` y `AIEngine`).
-- [ ] Implementar el Caso de Uso: `ProcessMessage`.
+### Fase 1: Estructura Pythonic
+- [ ] Crear entorno virtual y `requirements.txt` (`fastapi`, `uvicorn`, `pydantic-settings`, `httpx`).
+- [ ] Configurar `config.py` con Pydantic Settings.
+- [ ] Definir el dominio: `entities.py` y `interfaces.py`.
 
-### Fase 2: Infraestructura (Adaptadores)
-- [ ] Implementar `GeminiCLIAdapter` (Ejecución de subprocesos shell).
-- [ ] Implementar `TelegramBotAdapter` (Integración con la librería `telegraf`).
-- [ ] Configurar el sistema de logging desacoplado.
+### Fase 2: Adaptadores e Infraestructura
+- [ ] Implementar `GeminiCLIAdapter` usando `asyncio.create_subprocess_exec`.
+- [ ] Configurar FastAPI con un endpoint `/webhook`.
+- [ ] Implementar cliente `httpx` para enviar respuestas a Telegram de forma asíncrona.
 
-### Fase 3: Bootstrap (Orquestación)
-- [ ] Crear el `Container` o script de inicialización que inyecte las dependencias.
-- [ ] Configurar variables de entorno y validaciones de arranque.
-- [ ] Implementar el sistema de seguridad (Whitelist Middleware).
+### Fase 3: Túnel y Webhook
+- [ ] Instalar y configurar `cloudflared`.
+- [ ] Obtener el dominio del túnel y configurar el webhook en Telegram (`setWebhook`).
+- [ ] Implementar validación de secreto del webhook para seguridad.
 
-### Fase 4: Refinamiento de Salida y UX
-- [ ] Implementar `MessageSplitter` para cumplir con los límites de Telegram.
-- [ ] Añadir soporte para comandos nativos (`/start`, `/reset`).
-- [ ] Pruebas de integración con MCPs reales (Xubio/WooCommerce).
+### Fase 4: UX y MCPs
+- [ ] Manejar estados de "typing..." mientras Gemini procesa.
+- [ ] Implementar lógica de fragmentación de mensajes.
+- [ ] Test final con Xubio y WooCommerce.
 
-## Checklist de Calidad (SOLID)
-- [ ] ¿Hay lógica de Telegram en el adaptador de Gemini? (Debe ser No).
-- [ ] ¿Los casos de uso dependen de clases concretas? (Debe ser No).
-- [ ] ¿Es fácil cambiar `gemini-cli` por otro modelo sin tocar el `ProcessMessage`? (Debe ser Sí).
+---
+*Para ver las dudas técnicas pendientes, consultar [DISCOVERY.md](docs/DISCOVERY.md)*.
