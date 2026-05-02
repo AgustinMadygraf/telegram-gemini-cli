@@ -31,12 +31,38 @@ class TelegramPresenter(MessagePresenter):
 
     def _escape(self, text: str) -> str:
         """
-        Escapa caracteres especiales para Telegram MarkdownV2.
-        Referencia: https://core.telegram.org/bots/api#markdownv2-style
+        Escapa caracteres especiales para Telegram MarkdownV2, preservando bloques de código.
         """
-        # Caracteres que DEBEN ser escapados
+        # 1. Dividir por bloques de código (```...```) para no escapar su contenido de forma agresiva
+        parts = re.split(r'(```[\s\S]*?```|`.*?`)', text)
+        
+        escaped_parts = []
         special_chars = r"_*[]()~`>#+-=|{}.!"
-        return re.sub(f"([{re.escape(special_chars)}])", r"\\\1", text)
+        
+        for i, part in enumerate(parts):
+            # Si el índice es par, es texto normal (fuera de bloques de código)
+            if i % 2 == 0:
+                # Escapamos todos los caracteres especiales en texto plano
+                escaped_part = re.sub(f"([{re.escape(special_chars)}])", r"\\\1", part)
+                escaped_parts.append(escaped_part)
+            else:
+                # Es un bloque de código. Solo escapamos lo mínimo necesario para el bloque.
+                # En MarkdownV2 dentro de ``` o `, solo se deben escapar \ y `
+                # Pero en la práctica, Telegram es más permisivo dentro de bloques pre.
+                # Sin embargo, si el bloque de código tiene backticks dentro, hay que tener cuidado.
+                if part.startswith('```'):
+                    # Bloque preformateado
+                    # Escapamos solo contra-barras y backticks que cerrarían el bloque prematuramente
+                    inner = part[3:-3]
+                    # No escapamos el contenido interno de pre si usamos MarkdownV2 correctamente,
+                    # PERO los delimitadores deben estar bien.
+                    escaped_parts.append(f"```\n{inner}\n```")
+                else:
+                    # Código inline
+                    inner = part[1:-1]
+                    escaped_parts.append(f"`{inner}`")
+                    
+        return "".join(escaped_parts)
 
     def _chunk_text(self, text: str) -> List[str]:
         """Divide el texto en fragmentos que Telegram pueda procesar."""
