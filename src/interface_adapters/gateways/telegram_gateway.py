@@ -3,6 +3,7 @@ Path: src/interface_adapters/gateways/telegram_gateway.py
 """
 
 from telegram import Bot
+from telegram.error import TelegramError
 from src.use_cases.ports.interfaces import MessengerGateway, CredentialValidatorGateway
 from src.entities.network import WebhookStatus
 from typing import Optional
@@ -20,24 +21,13 @@ class TelegramAdapter(MessengerGateway, CredentialValidatorGateway):
             return False
 
     async def send_message(self, chat_id: int, text: str, parse_mode: Optional[str] = None) -> bool:
-        """Envía mensajes dividiéndolos si superan el límite de Telegram."""
+        """Envía mensajes."""
         try:
-            # Nota: La fragmentación ahora la hace el Presenter, 
-            # pero mantenemos una capa de seguridad aquí.
-            if len(text) > 4000:
-                chunks = [text[i:i+4000] for i in range(0, len(text), 4000)]
-                for chunk in chunks:
-                    await self.bot.send_message(
-                        chat_id=chat_id, 
-                        text=chunk, 
-                        parse_mode=parse_mode
-                    )
-            else:
-                await self.bot.send_message(
-                    chat_id=chat_id, 
-                    text=text, 
-                    parse_mode=parse_mode
-                )
+            await self.bot.send_message(
+                chat_id=chat_id, 
+                text=text, 
+                parse_mode=parse_mode
+            )
             return True
         except Exception:
             return False
@@ -63,9 +53,14 @@ class TelegramAdapter(MessengerGateway, CredentialValidatorGateway):
         )
 
     async def set_webhook(self, url: str, secret_token: Optional[str] = None) -> bool:
-        """Registra la URL del webhook en los servidores de Telegram."""
+        """
+        Registra la URL del webhook. 
+        Lanza TelegramError si la API responde con error (ej: 400).
+        """
         try:
-            await self.bot.set_webhook(url=url, secret_token=secret_token)
-            return True
+            return await self.bot.set_webhook(url=url, secret_token=secret_token)
+        except TelegramError as e:
+            # Lanzamos el error para que el caso de uso pueda reportar el detalle
+            raise e
         except Exception:
             return False
