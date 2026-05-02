@@ -18,10 +18,16 @@ class AIEngineGateway(ABC):
         """Reinicia el contexto de la sesión actual."""
         pass
 
+class MessagePresenter(ABC):
+    @abstractmethod
+    def format_response(self, response: AIResponse) -> List[str]:
+        """Transforma una respuesta de la IA en uno o varios mensajes formateados para la plataforma destino."""
+        pass
+
 class MessengerGateway(ABC):
     @abstractmethod
-    async def send_message(self, chat_id: int, text: str) -> bool:
-        """Envía un mensaje al usuario."""
+    async def send_message(self, chat_id: int, text: str, parse_mode: Optional[str] = None) -> bool:
+        """Envía un mensaje a un chat específico."""
         pass
 
     @abstractmethod

@@ -19,15 +19,25 @@ class TelegramAdapter(MessengerGateway, CredentialValidatorGateway):
         except Exception:
             return False
 
-    async def send_message(self, chat_id: int, text: str) -> bool:
+    async def send_message(self, chat_id: int, text: str, parse_mode: Optional[str] = None) -> bool:
         """Envía mensajes dividiéndolos si superan el límite de Telegram."""
         try:
+            # Nota: La fragmentación ahora la hace el Presenter, 
+            # pero mantenemos una capa de seguridad aquí.
             if len(text) > 4000:
                 chunks = [text[i:i+4000] for i in range(0, len(text), 4000)]
                 for chunk in chunks:
-                    await self.bot.send_message(chat_id=chat_id, text=chunk)
+                    await self.bot.send_message(
+                        chat_id=chat_id, 
+                        text=chunk, 
+                        parse_mode=parse_mode
+                    )
             else:
-                await self.bot.send_message(chat_id=chat_id, text=text)
+                await self.bot.send_message(
+                    chat_id=chat_id, 
+                    text=text, 
+                    parse_mode=parse_mode
+                )
             return True
         except Exception:
             return False

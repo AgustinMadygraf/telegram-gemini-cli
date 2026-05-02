@@ -11,6 +11,7 @@ from src.interface_adapters.gateways.gemini_gateway import GeminiCLIAdapter
 from src.interface_adapters.gateways.telegram_gateway import TelegramAdapter
 from src.interface_adapters.gateways.cloudflare_gateway import CloudflareGateway
 from src.interface_adapters.controllers.telegram_controller import TelegramController
+from src.interface_adapters.presenters.telegram_presenter import TelegramPresenter
 from src.infrastructure.fastapi.app import create_app
 from src.infrastructure.shell.asyncio_runner import AsyncioShellRunner
 from src.infrastructure.shell.local_filesystem import LocalFileSystem
@@ -45,9 +46,13 @@ validator_service = SystemValidatorService(
     secret_token=settings.WEBHOOK_SECRET_TOKEN
 )
 
+# 2. Instanciar Casos de Uso y Servicios
+telegram_presenter = TelegramPresenter()
+
 process_message_use_case = ProcessMessageUseCase(
     ai_engine=gemini_gateway,
     messenger=telegram_gateway,
+    presenter=telegram_presenter,
     allowed_users=settings.ALLOWED_CHAT_IDS
 )
 
