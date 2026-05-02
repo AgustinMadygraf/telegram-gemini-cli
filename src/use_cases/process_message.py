@@ -1,5 +1,5 @@
 from src.entities.chat import ChatMessage
-from src.use_cases.gateways.interfaces import AIEngineGateway, MessengerGateway
+from src.use_cases.ports.interfaces import AIEngineGateway, MessengerGateway
 from typing import List
 
 class ProcessMessageUseCase:

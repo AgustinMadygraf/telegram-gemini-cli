@@ -1,4 +1,4 @@
-from src.use_cases.gateways.interfaces import CredentialValidatorGateway
+from src.use_cases.ports.interfaces import CredentialValidatorGateway
 from typing import List
 import logging
 

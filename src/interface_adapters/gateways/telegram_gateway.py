@@ -1,5 +1,5 @@
 from telegram import Bot
-from src.use_cases.gateways.interfaces import MessengerGateway, CredentialValidatorGateway
+from src.use_cases.ports.interfaces import MessengerGateway, CredentialValidatorGateway
 import logging
 
 logger = logging.getLogger(__name__)

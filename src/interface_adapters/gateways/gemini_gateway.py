@@ -1,6 +1,6 @@
 import asyncio
 import os
-from src.use_cases.gateways.interfaces import AIEngineGateway, CredentialValidatorGateway
+from src.use_cases.ports.interfaces import AIEngineGateway, CredentialValidatorGateway
 from src.entities.ai import AIResponse
 import logging
 
