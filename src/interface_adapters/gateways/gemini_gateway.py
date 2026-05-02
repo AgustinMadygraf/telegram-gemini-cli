@@ -59,25 +59,47 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
     def _handle_google_auth_inheritance(self, session_path: str):
         """
         Copia la configuración global de Gemini al entorno de la sesión 
-        para heredar la identidad del usuario sin mezclar historiales.
+        para heredar la identidad del usuario (OAuth, proyectos, etc).
         """
-        global_config = os.path.expanduser("~/.gemini/settings.json")
+        global_config_dir = os.path.expanduser("~/.gemini")
         target_config_dir = os.path.join(session_path, ".gemini")
-        target_config_file = os.path.join(target_config_dir, "settings.json")
         
-        if self.fs.exists(global_config) and not self.fs.exists(target_config_file):
-            self.fs.ensure_dir(target_config_dir)
-            # Copiamos el archivo de configuración (identidad)
+        if self.fs.exists(global_config_dir) and not self.fs.exists(target_config_dir):
             import shutil
-            shutil.copy2(global_config, target_config_file)
+            try:
+                # Copiamos la carpeta entera para asegurar OAuth y settings
+                shutil.copytree(
+                    global_config_dir, 
+                    target_config_dir, 
+                    ignore=shutil.ignore_patterns("tmp*", "sessions*", "logs*", "antigravity*")
+                )
+            except Exception:
+                pass # Si falla alguna copia individual, seguimos adelante
 
     async def validate(self) -> bool:
-        """Valida la existencia y ejecución del binario delegando al sistema."""
+        """
+        Valida que el binario exista y que la autenticación sea funcional
+        haciendo una consulta de prueba.
+        """
+        # 1. Validar existencia del binario
         if not self.fs.exists(self.binary_path):
             return False
         
+        # 2. Validar autenticación (Deep Auth Check)
         try:
-            return_code, _, _ = await self.shell.execute([self.binary_path, "--version"])
+            # Usamos una sesión especial de validación de sistema
+            env = self._get_env_for_session("system_check")
+            
+            # Ejecutamos un ping mínimo
+            args = [
+                self.binary_path,
+                "-p", "hi",
+                "--output-format", "text"
+            ]
+            
+            return_code, stdout, stderr = await self.shell.execute(args, env=env)
+            
+            # Si el código es 0, la autenticación y el binario están OK
             return return_code == 0
         except Exception:
             return False
