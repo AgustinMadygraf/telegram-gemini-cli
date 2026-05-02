@@ -6,17 +6,14 @@ import asyncio
 import os
 from src.use_cases.ports.interfaces import AIEngineGateway, CredentialValidatorGateway
 from src.entities.ai import AIResponse
-import logging
-
-logger = logging.getLogger(__name__)
 
 class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
     def __init__(self, binary_path: str = "/usr/local/bin/gemini"):
         self.binary_path = binary_path
 
     async def validate(self) -> bool:
+        """Valida la existencia y ejecución del binario de Gemini."""
         if not os.path.exists(self.binary_path):
-            logger.error(f"El binario de Gemini no se encuentra en: {self.binary_path}")
             return False
         
         try:
@@ -25,16 +22,13 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE
             )
-            stdout, _ = await process.communicate()
-            if process.returncode == 0:
-                logger.info(f"Gemini CLI validado. Versión: {stdout.decode().strip()}")
-                return True
-            return False
-        except Exception as e:
-            logger.error(f"Error al validar Gemini CLI: {e}")
+            await process.communicate()
+            return process.returncode == 0
+        except Exception:
             return False
 
     async def ask(self, prompt: str) -> AIResponse:
+        """Ejecuta una consulta al CLI de Gemini."""
         try:
             process = await asyncio.create_subprocess_exec(
                 self.binary_path,
@@ -60,4 +54,5 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
             return AIResponse(text="", success=False, error_message=str(e))
 
     async def reset(self) -> bool:
+        """Reinicia el contexto (implementación pendiente en CLI)."""
         return True
