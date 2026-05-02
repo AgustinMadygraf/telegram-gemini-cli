@@ -1,31 +1,33 @@
 # Telegram Gemini CLI Bridge
 
-Bridge asíncrono para vincular Telegram con Gemini CLI (MCP), desarrollado con estándares de ingeniería de software de alto nivel.
+Bridge asíncrono para vincular Telegram con Gemini CLI (MCP).
 
 ## Arquitectura
 
-Este proyecto implementa **Clean Architecture** de forma estricta:
-- **Dependency Rule**: Las dependencias solo apuntan hacia el centro (Entidades -> Casos de Uso).
-- **SOLID**: Desacoplamiento total entre frameworks (FastAPI/Telegram) y lógica de negocio.
+Implementación de **Clean Architecture (Hexagonal)**:
+- **Entities**: Objetos de negocio.
+- **Use Cases & Ports**: Lógica y contratos.
+- **Interface Adapters**: Controllers, Gateways y Presenters.
+- **Infrastructure**: FastAPI, Red y Configuración.
 
 ## Estructura del Código
 
 ```text
 src/
-├── entities/               # Lógica de negocio (Entidades)
-├── use_cases/              # Reglas de aplicación y Gateways (Interfaces)
+├── entities/               # Lógica de negocio
+├── use_cases/              # Reglas de aplicación
+│   └── ports/              # Interfaces (Puertos)
 ├── interface_adapters/     # Adaptadores de interfaz
-│   ├── controllers/        # Controladores de entrada (FastAPI)
-│   ├── gateways/           # Implementación de Gateways
-│   └── presenters/         # Formateadores de salida
+│   ├── controllers/        # FastAPI -> Use Case
+│   ├── gateways/           # Impl. de Gemini y Telegram
+│   └── presenters/         # Formateadores
 └── infrastructure/         # Detalles técnicos
-    ├── fastapi/            # Configuración de red y servidor
-    ├── telegram/           # Configuración del bot
-    └── setting/            # Configuración y Observabilidad
+    ├── fastapi/            # Configuración de red
+    └── setting/            # Configuración y Logging
 ```
 
-## Documentación Técnica
+## Ejecución
 
-- **[SRS.md](docs/SRS.md)**: Detalle de capas y flujo de control.
-- **[DISCOVERY.md](docs/DISCOVERY.md)**: Registro de decisiones y dudas técnicas.
-- **[TODO.md](docs/TODO.md)**: Roadmap de refactorización y desarrollo.
+1. Configurar `.env` (ver `.env.example`).
+2. Activar entorno: `source venv/bin/activate`.
+3. Ejecutar: `python main.py`.

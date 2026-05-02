@@ -2,7 +2,7 @@
 Path: src/infrastructure/fastapi/app.py
 """
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, BackgroundTasks
 from src.interface_adapters.controllers.telegram_controller import TelegramController
 
 def create_app(controller: TelegramController):
@@ -10,8 +10,8 @@ def create_app(controller: TelegramController):
 
     @app.post("/webhook")
     async def webhook_route(
-        request: any, 
-        background_tasks: any,
+        request: Request, 
+        background_tasks: BackgroundTasks,
         x_telegram_bot_api_secret_token: str = None
     ):
         # Delegamos la lógica al controlador

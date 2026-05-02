@@ -2,20 +2,20 @@
 
 ## Certezas del Diseño
 
-1. **Inversión de Dependencias**: Las interfaces (Gateways) vivirán en `src/use_cases/gateways/`.
-2. **Presentación Asíncrona**: El uso de `BackgroundTasks` en FastAPI es obligatorio para cumplir con los tiempos de respuesta de Telegram.
-3. **Hard Exit**: El sistema no debe arrancar si los componentes críticos (Gemini CLI, Telegram Token) fallan en la validación inicial.
+1. **Nomenclatura**: Se utiliza `src/use_cases/ports/` para las interfaces para evitar confusión con los adaptadores.
+2. **Hard Exit**: El sistema no arranca si falla la validación de Gemini o Telegram.
+3. **Encabezados de Seguridad**: Se utiliza un secreto compartido en el Header para validar el Webhook.
 
 ## Dudas Actuales
 
-### 1. Granularidad de los Presenters
-- **Afirmación**: Los `Presenters` deben encargarse de escapar caracteres especiales para MarkdownV2, pero no deben saber nada del protocolo HTTP.
-- **Duda**: ¿Cómo manejar el envío de fragmentos de mensajes largos de forma que el Use Case no se ensucie con la lógica de paginación de Telegram?
+### 1. Validación de Salud del Webhook
+- **Afirmación**: El sistema debe consultar `getWebhookInfo` al arrancar.
+- **Duda**: ¿Debería el sistema intentar configurar el webhook automáticamente si detecta una discrepancia en la URL registrada en Telegram?
 
-### 2. Inyección de Dependencias
-- **Afirmación**: Necesitamos un orquestador central (main.py) que construya el grafo de dependencias.
-- **Duda**: ¿Es conveniente usar un framework de DI (como `dependency_injector`) o mantenerlo manual para mantener la simplicidad inicial?
+### 2. Detección de Proxy/Túnel
+- **Afirmación**: Estamos corriendo detrás de Cloudflare Tunnel.
+- **Duda**: ¿Necesitamos validar explícitamente que la IP de origen del Webhook pertenece al rango oficial de Telegram?
 
-### 3. Persistencia de Configuración
-- **Afirmación**: `pydantic-settings` es suficiente para la validación de entorno.
-- **Duda**: ¿Deberíamos mover la whitelist de usuarios a un archivo `JSON` o base de datos pequeña si la lista crece más allá de unos pocos IDs?
+### 3. Persistencia de Sesión Gemini
+- **Afirmación**: Usamos `--resume latest`.
+- **Duda**: ¿Cómo manejar múltiples usuarios si Gemini CLI no soporta IDs de sesión separados por defecto en modo persistente simple?

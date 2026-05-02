@@ -1,24 +1,22 @@
 # TODO - Telegram Gemini CLI Bridge
 
-## Roadmap de Refactorización
+## Roadmap de Desarrollo
 
-### Fase 1: Reestructuración de Directorios (Inmediato)
-- [ ] Mover entidades a `src/entities/`.
-- [ ] Crear interfaces (ports) en `src/use_cases/gateways/`.
-- [ ] Crear adaptadores de infraestructura en `src/infrastructure/`.
-- [ ] Dividir adaptadores actuales en Controllers, Gateways e Implementaciones.
-- [ ] Mover configuración a `src/infrastructure/setting/`.
+### Fase 1: Estructura y Validación (Completado)
+- [x] Restructuración Clean Architecture (Ports & Adapters).
+- [x] Validación de arranque con Hard Exit.
+- [x] Encabezados de ruta y documentación unificada.
 
-### Fase 2: Implementación de la Lógica Desacoplada
-- [ ] Implementar `TelegramController` (FastAPI -> Use Case).
-- [ ] Implementar `GeminiGateway` (Use Case -> Shell).
-- [ ] Implementar `TelegramPresenter` (Use Case -> Formateo).
+### Fase 2: Salud y Red (Prioridad Actual)
+- [ ] Implementar `getWebhookInfo` en el validador de Telegram.
+- [ ] Validar latencia y conectividad del túnel al inicio.
+- [ ] Agregar endpoint de diagnóstico detallado.
 
-### Fase 3: Observabilidad y Estabilidad
-- [ ] Configurar Logger centralizado en `src/infrastructure/setting/logger.py`.
-- [ ] Refinar las validaciones de arranque (Hard Exit).
-- [ ] Implementar validación de secreto de Webhook en el Controller.
+### Fase 3: Lógica de Aplicación y Presentación
+- [ ] Implementar `TelegramPresenter` (MarkdownV2 escaping).
+- [ ] Manejo de fragmentación inteligente de mensajes largos.
+- [ ] Comando `/reset` para limpiar contexto de Gemini.
 
-### Fase 4: Pruebas y despliegue
-- [ ] Test de flujo completo: Webhook -> Controller -> Use Case -> Gateway -> Presenter -> Telegram.
-- [ ] Configuración final de Cloudflare Tunnel.
+### Fase 4: Soporte Multi-usuario y Sesiones
+- [ ] Investigar manejo de sesiones independientes en Gemini CLI.
+- [ ] Implementar persistencia de metadatos de usuario.
