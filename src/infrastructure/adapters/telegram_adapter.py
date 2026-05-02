@@ -1,12 +1,22 @@
 from telegram import Bot
-from src.domain.interfaces import MessagingProviderInterface
+from src.domain.interfaces import MessagingProviderInterface, CredentialValidatorInterface
 import logging
 
 logger = logging.getLogger(__name__)
 
-class TelegramAdapter(MessagingProviderInterface):
+class TelegramAdapter(MessagingProviderInterface, CredentialValidatorInterface):
     def __init__(self, token: str):
         self.bot = Bot(token=token)
+
+    async def validate(self) -> bool:
+        """Verifica la validez del token llamando a get_me de Telegram."""
+        try:
+            bot_info = await self.bot.get_me()
+            logger.info(f"Credenciales de Telegram validadas con éxito. Bot: @{bot_info.username}")
+            return True
+        except Exception as e:
+            logger.error(f"Fallo en la validación de credenciales de Telegram: {e}")
+            return False
 
     async def send_message(self, chat_id: int, text: str) -> bool:
         try:

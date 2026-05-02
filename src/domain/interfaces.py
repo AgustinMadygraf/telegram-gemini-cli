@@ -22,3 +22,9 @@ class MessagingProviderInterface(ABC):
     async def set_typing(self, chat_id: int) -> None:
         """Activa el estado de 'escribiendo' en el chat."""
         pass
+
+class CredentialValidatorInterface(ABC):
+    @abstractmethod
+    async def validate(self) -> bool:
+        """Valida que las credenciales sean correctas y el servicio esté disponible."""
+        pass
