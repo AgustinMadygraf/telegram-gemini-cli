@@ -12,14 +12,24 @@ from src.interface_adapters.gateways.telegram_gateway import TelegramAdapter
 from src.interface_adapters.gateways.cloudflare_gateway import CloudflareGateway
 from src.interface_adapters.controllers.telegram_controller import TelegramController
 from src.infrastructure.fastapi.app import create_app
+from src.infrastructure.shell.asyncio_runner import AsyncioShellRunner
+from src.infrastructure.shell.local_filesystem import LocalFileSystem
 from src.use_cases.process_message import ProcessMessageUseCase
 from src.use_cases.system_validator import SystemValidatorService
 
 # 0. Configurar Observabilidad
 setup_logger()
 
-# 1. Instanciar Adaptadores de Infraestructura (Gateways)
-gemini_gateway = GeminiCLIAdapter(binary_path=settings.GEMINI_BINARY_PATH)
+# 1. Instanciar Infraestructura de Bajo Nivel (OS)
+shell_runner = AsyncioShellRunner()
+file_system = LocalFileSystem()
+
+# 2. Instanciar Adaptadores de Infraestructura (Gateways)
+gemini_gateway = GeminiCLIAdapter(
+    shell=shell_runner, 
+    fs=file_system,
+    binary_path=settings.GEMINI_BINARY_PATH
+)
 telegram_gateway = TelegramAdapter(token=settings.TELEGRAM_BOT_TOKEN)
 cloudflare_gateway = CloudflareGateway(
     token=settings.CLOUDFLARE_TOKEN, 

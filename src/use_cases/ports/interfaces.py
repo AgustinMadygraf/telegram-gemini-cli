@@ -3,7 +3,7 @@ Path: src/use_cases/ports/interfaces.py
 """
 
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Optional, Tuple, List
 from src.entities.ai import AIResponse
 from src.entities.network import WebhookStatus
 
@@ -49,4 +49,16 @@ class TunnelGateway(ABC):
     @abstractmethod
     async def validate_tunnel(self) -> bool:
         """Verifica que el túnel esté activo y saludable."""
+        pass
+
+class ShellGateway(ABC):
+    @abstractmethod
+    async def execute(self, args: List[str]) -> Tuple[int, str, str]:
+        """Ejecuta un comando en el sistema y devuelve (return_code, stdout, stderr)."""
+        pass
+
+class FileSystemGateway(ABC):
+    @abstractmethod
+    def exists(self, path: str) -> bool:
+        """Verifica si un path existe en el sistema de archivos."""
         pass
