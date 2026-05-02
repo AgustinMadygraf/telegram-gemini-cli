@@ -4,6 +4,7 @@ Path: src/interface_adapters/gateways/telegram_gateway.py
 
 from telegram import Bot
 from src.use_cases.ports.interfaces import MessengerGateway, CredentialValidatorGateway
+from src.entities.network import WebhookStatus
 import logging
 
 logger = logging.getLogger(__name__)
@@ -39,3 +40,20 @@ class TelegramAdapter(MessengerGateway, CredentialValidatorGateway):
             await self.bot.send_chat_action(chat_id=chat_id, action="typing")
         except Exception as e:
             logger.error(f"Error seteando typing: {e}")
+
+    async def get_webhook_status(self) -> WebhookStatus:
+        """Obtiene información del webhook desde Telegram."""
+        try:
+            info = await self.bot.get_webhook_info()
+            return WebhookStatus(
+                url=info.url,
+                has_custom_certificate=info.has_custom_certificate,
+                pending_update_count=info.pending_update_count,
+                last_error_date=info.last_error_date,
+                last_error_message=info.last_error_message,
+                max_connections=info.max_connections,
+                ip_address=info.ip_address
+            )
+        except Exception as e:
+            logger.error(f"Error consultando estado del webhook: {e}")
+            raise e

@@ -5,6 +5,7 @@ Path: src/use_cases/ports/interfaces.py
 from abc import ABC, abstractmethod
 from src.entities.chat import ChatMessage
 from src.entities.ai import AIResponse
+from src.entities.network import WebhookStatus
 
 class AIEngineGateway(ABC):
     @abstractmethod
@@ -26,6 +27,11 @@ class MessengerGateway(ABC):
     @abstractmethod
     async def set_typing(self, chat_id: int) -> None:
         """Activa el estado de 'escribiendo' en el chat."""
+        pass
+
+    @abstractmethod
+    async def get_webhook_status(self) -> WebhookStatus:
+        """Consulta el estado actual del webhook en el proveedor."""
         pass
 
 class CredentialValidatorGateway(ABC):

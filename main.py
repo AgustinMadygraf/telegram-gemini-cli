@@ -22,7 +22,10 @@ gemini_gateway = GeminiCLIAdapter(binary_path=settings.GEMINI_BINARY_PATH)
 telegram_gateway = TelegramAdapter(token=settings.TELEGRAM_BOT_TOKEN)
 
 # 2. Instanciar Casos de Uso y Servicios
-validator_service = SystemValidatorService(validators=[gemini_gateway, telegram_gateway])
+validator_service = SystemValidatorService(
+    validators=[gemini_gateway, telegram_gateway],
+    messenger=telegram_gateway
+)
 
 process_message_use_case = ProcessMessageUseCase(
     ai_engine=gemini_gateway,
