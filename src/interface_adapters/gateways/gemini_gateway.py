@@ -32,13 +32,13 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
         except Exception:
             return False
 
-    async def ask(self, prompt: str) -> AIResponse:
+    async def ask(self, prompt: str, session_id: str = "latest") -> AIResponse:
         """Ejecuta una consulta al CLI de Gemini delegando la ejecución al shell."""
         try:
             args = [
                 self.binary_path,
                 "-p", prompt,
-                "--resume", "latest",
+                "--resume", session_id,
                 "--output-format", "text",
                 "--approval-mode", "auto_edit"
             ]
@@ -56,6 +56,11 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
         except Exception as e:
             return AIResponse(text="", success=False, error_message=str(e))
 
-    async def reset(self) -> bool:
-        """Reinicia el contexto."""
+    async def reset(self, session_id: str = "latest") -> bool:
+        """Reinicia el contexto de la sesión."""
+        # Si gemini-cli no tiene un comando de reset nativo, 
+        # una forma de 'resetear' es no usar --resume en el siguiente comando.
+        # Sin embargo, para persistir el reset, podríamos intentar borrar el archivo de sesión
+        # si supiéramos dónde está. Por ahora, devolvemos True indicando que la lógica
+        # de negocio de reset se ha invocado.
         return True

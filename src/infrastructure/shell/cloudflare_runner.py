@@ -6,6 +6,7 @@ import subprocess
 import time
 import os
 import signal
+from typing import Optional
 from src.use_cases.ports.interfaces import TunnelGateway
 
 class CloudflareTunnelRunner(TunnelGateway):
@@ -14,12 +15,29 @@ class CloudflareTunnelRunner(TunnelGateway):
         self.local_url = local_url
         self.process: Optional[subprocess.Popen] = None
 
-    async def validate_tunnel(self) -> bool:
+    async def validate_tunnel(self, url: Optional[str] = None) -> bool:
         """
-        Verifica si el proceso del túnel está vivo.
-        En una versión más avanzada, podríamos consultar la API de métricas de cloudflared.
+        Verifica si el proceso del túnel está vivo y si el host resuelve.
         """
-        return self.process is not None and self.process.poll() is None
+        # 1. Verificar Proceso
+        if not (self.process and self.process.poll() is None):
+            return False
+
+        # 2. Verificar Resolución de Host (Opcional)
+        if url:
+            try:
+                from urllib.parse import urlparse
+                import socket
+                
+                hostname = urlparse(url).hostname
+                if hostname:
+                    # Intenta resolver el host para asegurar que el túnel está propagado
+                    socket.gethostbyname(hostname)
+                    return True
+            except Exception:
+                return False # No resuelve o error de parseo
+        
+        return True
 
     def start_tunnel(self) -> None:
         """Inicia el túnel de Cloudflare en segundo plano."""

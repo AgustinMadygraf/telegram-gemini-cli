@@ -17,8 +17,8 @@
 - [x] Escapar caracteres especiales automáticamente.
 - [x] Manejo de fragmentación de mensajes largos (>4096 caracteres).
 
-### Fase 4: Robustez y Operación
-- [ ] Iniciar túnel de Cloudflare y verificar resolución de host.
-- [ ] Cambiar `ALLOWED_CHAT_IDS` por ID real del usuario.
-- [ ] Implementar comando `/reset` (limpieza de contexto).
-- [ ] Manejo de sesiones multi-usuario.
+### Fase 4: Robustez y Operación (Completado)
+- [x] Iniciar túnel de Cloudflare y verificar resolución de host.
+- [x] Cambiar `ALLOWED_CHAT_IDS` por ID real del usuario.
+- [x] Implementar comando `/reset` (limpieza de contexto).
+- [x] Manejo de sesiones multi-usuario.

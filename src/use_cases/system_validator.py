@@ -34,7 +34,7 @@ class SystemValidatorService:
         # 2. Validar Túnel (Cloudflare)
         if self.tunnel:
             report.add_info(f"Validando estado del túnel para: {self.webhook_url}")
-            if not await self.tunnel.validate_tunnel():
+            if not await self.tunnel.validate_tunnel(url=self.webhook_url):
                 # FLEXIBILIDAD: Solo es un error crítico si estamos en producción (podría ser un flag)
                 # Por ahora, lo bajamos a advertencia para permitir el desarrollo.
                 report.add_info("⚠️  Túnel no detectado o token faltante. Se permite continuar en modo degradado.")

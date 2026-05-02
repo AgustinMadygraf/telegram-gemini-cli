@@ -32,7 +32,7 @@ class TelegramController:
             )
             
             # 3. Validar Usuario (Lanza PermissionError si no está en whitelist)
-            self.use_case.validate_user(msg.user_id)
+            await self.use_case.validate_user(msg.user_id, msg.chat_id)
             
             return msg
         

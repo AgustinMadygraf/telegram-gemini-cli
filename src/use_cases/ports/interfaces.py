@@ -9,12 +9,12 @@ from src.entities.network import WebhookStatus
 
 class AIEngineGateway(ABC):
     @abstractmethod
-    async def ask(self, prompt: str) -> AIResponse:
+    async def ask(self, prompt: str, session_id: Optional[str] = None) -> AIResponse:
         """Envia un prompt a la IA y devuelve su respuesta."""
         pass
 
     @abstractmethod
-    async def reset(self) -> bool:
+    async def reset(self, session_id: Optional[str] = None) -> bool:
         """Reinicia el contexto de la sesión actual."""
         pass
 
@@ -53,7 +53,7 @@ class CredentialValidatorGateway(ABC):
 
 class TunnelGateway(ABC):
     @abstractmethod
-    async def validate_tunnel(self) -> bool:
+    async def validate_tunnel(self, url: Optional[str] = None) -> bool:
         """Verifica que el túnel esté activo y saludable."""
         pass
 

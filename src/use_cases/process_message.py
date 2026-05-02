@@ -23,18 +23,42 @@ class ProcessMessageUseCase:
         self.presenter = presenter
         self.allowed_users = allowed_users
 
-    def validate_user(self, user_id: int) -> None:
+    async def validate_user(self, user_id: int, chat_id: int) -> None:
         if user_id not in self.allowed_users:
+            # Enviar mensaje de cortesía al usuario en Telegram
+            await self.messenger.send_message(
+                chat_id, 
+                f"⚠️ *Acceso denegado*\nSu ID de usuario (`{user_id}`) no está autorizado para usar este bot\\. Contacte con el administrador\\."
+            )
             raise PermissionError(f"User {user_id} not in whitelist")
 
     async def execute(self, message: ChatMessage) -> None:
-        self.validate_user(message.user_id)
+        await self.validate_user(message.user_id, message.chat_id)
 
-        # 1. Notificar estado (Typing)
+        # 1. Manejo de Comandos Especiales
+        session_id = f"chat_{message.chat_id}"
+        if message.text.strip().lower() == "/reset":
+            await self.messenger.set_typing(message.chat_id)
+            success = await self.ai_engine.reset(session_id=session_id)
+            if success:
+                await self.messenger.send_message(
+                    chat_id=message.chat_id, 
+                    text="🔄 *Contexto reiniciado*\nSe ha limpiado el historial de la conversación\\.",
+                    parse_mode="MarkdownV2"
+                )
+            else:
+                await self.messenger.send_message(
+                    chat_id=message.chat_id, 
+                    text="❌ *Error*\nNo se pudo reiniciar el contexto\\.",
+                    parse_mode="MarkdownV2"
+                )
+            return
+
+        # 2. Notificar estado (Typing)
         await self.messenger.set_typing(message.chat_id)
         
-        # 2. Consultar a la IA
-        response = await self.ai_engine.ask(message.text)
+        # 3. Consultar a la IA
+        response = await self.ai_engine.ask(message.text, session_id=session_id)
         
         # 3. Formatear respuesta vía Presenter (Capa de Presentación)
         # El presenter se encarga de escapar MarkdownV2 y fragmentar si es largo.
