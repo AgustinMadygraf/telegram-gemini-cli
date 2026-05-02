@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
-from src.domain.entities import ChatMessage, AIResponse
+from src.entities.chat import ChatMessage
+from src.entities.ai import AIResponse
 
-class AIEngineInterface(ABC):
+class AIEngineGateway(ABC):
     @abstractmethod
     async def ask(self, prompt: str) -> AIResponse:
         """Envia un prompt a la IA y devuelve su respuesta."""
@@ -12,7 +13,7 @@ class AIEngineInterface(ABC):
         """Reinicia el contexto de la sesión actual."""
         pass
 
-class MessagingProviderInterface(ABC):
+class MessengerGateway(ABC):
     @abstractmethod
     async def send_message(self, chat_id: int, text: str) -> bool:
         """Envía un mensaje al usuario."""
@@ -23,8 +24,8 @@ class MessagingProviderInterface(ABC):
         """Activa el estado de 'escribiendo' en el chat."""
         pass
 
-class CredentialValidatorInterface(ABC):
+class CredentialValidatorGateway(ABC):
     @abstractmethod
     async def validate(self) -> bool:
-        """Valida que las credenciales sean correctas y el servicio esté disponible."""
+        """Valida que las credenciales sean correctas."""
         pass

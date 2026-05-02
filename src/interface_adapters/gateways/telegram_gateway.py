@@ -1,15 +1,14 @@
 from telegram import Bot
-from src.domain.interfaces import MessagingProviderInterface, CredentialValidatorInterface
+from src.use_cases.gateways.interfaces import MessengerGateway, CredentialValidatorGateway
 import logging
 
 logger = logging.getLogger(__name__)
 
-class TelegramAdapter(MessagingProviderInterface, CredentialValidatorInterface):
+class TelegramAdapter(MessengerGateway, CredentialValidatorGateway):
     def __init__(self, token: str):
         self.bot = Bot(token=token)
 
     async def validate(self) -> bool:
-        """Verifica la validez del token llamando a get_me de Telegram."""
         try:
             bot_info = await self.bot.get_me()
             logger.info(f"Credenciales de Telegram validadas con éxito. Bot: @{bot_info.username}")
@@ -20,7 +19,6 @@ class TelegramAdapter(MessagingProviderInterface, CredentialValidatorInterface):
 
     async def send_message(self, chat_id: int, text: str) -> bool:
         try:
-            # Manejo de fragmentación básica si el mensaje es muy largo
             if len(text) > 4000:
                 chunks = [text[i:i+4000] for i in range(0, len(text), 4000)]
                 for chunk in chunks:

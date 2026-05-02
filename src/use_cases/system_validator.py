@@ -1,15 +1,14 @@
-from src.domain.interfaces import CredentialValidatorInterface
+from src.use_cases.gateways.interfaces import CredentialValidatorGateway
 from typing import List
 import logging
 
 logger = logging.getLogger(__name__)
 
 class SystemValidatorService:
-    def __init__(self, validators: List[CredentialValidatorInterface]):
+    def __init__(self, validators: List[CredentialValidatorGateway]):
         self.validators = validators
 
     async def validate_all(self) -> bool:
-        """Ejecuta todas las validaciones del sistema."""
         logger.info("Iniciando validación de credenciales y sistema...")
         all_ok = True
         for validator in self.validators:
