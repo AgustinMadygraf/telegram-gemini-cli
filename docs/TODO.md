@@ -7,15 +7,16 @@
 - [x] Validación de arranque con Hard Exit.
 - [x] Auto-registro de Webhook en Telegram.
 
-### Fase 2: Red y Túneles (Prioridad Actual)
-- [ ] Incorporar `CLOUDFLARE_TOKEN` en la configuración.
-- [ ] Implementar `CloudflareGateway` para monitoreo de túnel.
-- [ ] Validar latencia de red al inicio.
+### Fase 2: Red, Túneles y OS (Completado)
+- [x] Implementar `CloudflareGateway`.
+- [x] **Abstracción total del sistema (Shell & FileSystem)**.
+- [x] Eliminación de dependencias de infraestructura en Adapters.
 
-### Fase 3: Capa de Presentación
-- [ ] Implementar `TelegramPresenter` (MarkdownV2).
+### Fase 3: Capa de Presentación (Prioridad Actual)
+- [ ] Implementar `TelegramPresenter` (Manejo de MarkdownV2).
+- [ ] Escapar caracteres especiales automáticamente.
 - [ ] Manejo de fragmentación de mensajes largos (>4096 caracteres).
 
-### Fase 4: Experiencia de Usuario
+### Fase 4: Experiencia y Comandos
 - [ ] Implementar comando `/reset` (limpieza de contexto).
-- [ ] Implementar comando `/status` (diagnóstico de salud del bot).
+- [ ] Implementar comando `/status` (diagnóstico de salud).

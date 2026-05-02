@@ -4,23 +4,25 @@ Bridge asíncrono para vincular Telegram con Gemini CLI (MCP).
 
 ## Arquitectura
 
-Implementación de **Clean Architecture (Hexagonal)**:
-- **Ports & Adapters**: Desacoplamiento total de Gemini, Telegram y Cloudflare.
-- **Deep Health Check**: Validación obligatoria de credenciales y red en el arranque.
+Implementación de **Clean Architecture (Hexagonal)** al más alto nivel:
+- **Zero-Dep Adapters**: Los adaptadores no dependen de librerías externas ni del OS.
+- **Deep Health Check**: Validación obligatoria de credenciales, red y túneles en el arranque.
+- **Inversión de Control**: Todo el sistema se configura mediante inyección de dependencias en el arranque.
 
 ## Estructura del Código
 
 ```text
 src/
-├── entities/               # Lógica de negocio
+├── entities/               # Lógica de negocio (Entidades puras)
 ├── use_cases/              # Reglas de aplicación
-│   └── ports/              # Interfaces (Puertos)
-├── interface_adapters/     # Adaptadores de interfaz
-│   ├── controllers/        # Controladores FastAPI
-│   ├── gateways/           # Impl. de Gemini, Telegram y Cloudflare
-│   └── presenters/         # Formateadores de salida
-└── infrastructure/         # Detalles técnicos
-    ├── fastapi/            # Server setup
+│   └── ports/              # Interfaces (Contratos de sistema y negocio)
+├── interface_adapters/     # Adaptadores de interfaz (Silent Gateways)
+│   ├── controllers/        # Controladores agnósticos
+│   ├── gateways/           # Implementaciones de puertos
+│   └── presenters/         # Formateadores (Capa de presentación)
+└── infrastructure/         # Detalles técnicos y Frameworks
+    ├── fastapi/            # Configuración de red y Web
+    ├── shell/              # Bajo nivel (Asyncio, OS)
     └── setting/            # Configuración y Logging
 ```
 
