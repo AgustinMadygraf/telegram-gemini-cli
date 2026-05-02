@@ -24,7 +24,9 @@ telegram_gateway = TelegramAdapter(token=settings.TELEGRAM_BOT_TOKEN)
 # 2. Instanciar Casos de Uso y Servicios
 validator_service = SystemValidatorService(
     validators=[gemini_gateway, telegram_gateway],
-    messenger=telegram_gateway
+    messenger=telegram_gateway,
+    webhook_url=settings.WEBHOOK_URL,
+    secret_token=settings.WEBHOOK_SECRET_TOKEN
 )
 
 process_message_use_case = ProcessMessageUseCase(

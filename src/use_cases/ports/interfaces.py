@@ -34,6 +34,11 @@ class MessengerGateway(ABC):
         """Consulta el estado actual del webhook en el proveedor."""
         pass
 
+    @abstractmethod
+    async def set_webhook(self, url: str, secret_token: Optional[str] = None) -> bool:
+        """Configura la URL del webhook en el proveedor."""
+        pass
+
 class CredentialValidatorGateway(ABC):
     @abstractmethod
     async def validate(self) -> bool:

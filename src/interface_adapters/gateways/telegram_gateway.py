@@ -6,6 +6,7 @@ from telegram import Bot
 from src.use_cases.ports.interfaces import MessengerGateway, CredentialValidatorGateway
 from src.entities.network import WebhookStatus
 import logging
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -57,3 +58,14 @@ class TelegramAdapter(MessengerGateway, CredentialValidatorGateway):
         except Exception as e:
             logger.error(f"Error consultando estado del webhook: {e}")
             raise e
+
+    async def set_webhook(self, url: str, secret_token: Optional[str] = None) -> bool:
+        """Registra la URL del webhook en los servidores de Telegram."""
+        try:
+            logger.info(f"Intentando registrar Webhook en: {url}")
+            await self.bot.set_webhook(url=url, secret_token=secret_token)
+            logger.info("Webhook registrado exitosamente en Telegram.")
+            return True
+        except Exception as e:
+            logger.error(f"Error al registrar el Webhook: {e}")
+            return False
