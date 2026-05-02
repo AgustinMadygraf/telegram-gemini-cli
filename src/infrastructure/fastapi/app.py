@@ -3,11 +3,15 @@ Path: src/infrastructure/fastapi/app.py
 """
 
 from fastapi import FastAPI, Request, BackgroundTasks, Header
+from typing import Optional, Any
 from src.interface_adapters.controllers.telegram_controller import TelegramController
 from src.infrastructure.fastapi.middleware import ObservabilityMiddleware
 
-def create_app(controller: TelegramController):
-    app = FastAPI(title="Telegram Gemini CLI Bridge")
+def create_app(controller: TelegramController, lifespan: Optional[Any] = None) -> FastAPI:
+    app = FastAPI(
+        title="Telegram Gemini CLI Bridge",
+        lifespan=lifespan
+    )
 
     # Añadir Middleware de Observabilidad
     app.add_middleware(ObservabilityMiddleware)

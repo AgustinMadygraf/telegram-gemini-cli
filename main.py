@@ -17,9 +17,18 @@ from src.infrastructure.shell.asyncio_runner import AsyncioShellRunner
 from src.infrastructure.shell.local_filesystem import LocalFileSystem
 from src.infrastructure.shell.port_guard import PortGuard
 from src.infrastructure.shell.cloudflare_runner import CloudflareTunnelRunner
+from fastapi import FastAPI
+from contextlib import asynccontextmanager
 import atexit
 from src.use_cases.process_message import ProcessMessageUseCase
 from src.use_cases.system_validator import SystemValidatorService
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Ejecutar validaciones dentro del loop de FastAPI
+    await startup_check()
+    yield
+    # Cleanup si fuera necesario (atexit ya maneja el túnel)
 
 # 0. Configurar Observabilidad
 setup_logger()
@@ -68,24 +77,24 @@ telegram_controller = TelegramController(
     secret_token=settings.WEBHOOK_SECRET_TOKEN
 )
 
-# 4. Crear App de FastAPI (Infraestructura)
-app = create_app(controller=telegram_controller)
+# 4. Crear Aplicación FastAPI
+app = create_app(
+    controller=telegram_controller,
+    lifespan=lifespan
+)
 
 async def startup_check():
-    """Realiza las validaciones de inicio, loguea resultados y detiene el sistema si fallan."""
-    import logging
-    logger = logging.getLogger(__name__)
-    
+    """Delegación del Deep Health Check al servicio de validación."""
     report = await validator_service.validate_all()
     
-    # Procesar mensajes del reporte (Infraestructura decide cómo mostrarlos)
+    # Procesar resultados según el reporte
     for msg in report.info_messages:
-        logger.info(msg)
+        print(f"✅ {msg}")
     for msg in report.error_messages:
-        logger.error(msg)
+        print(f"⚠️  Error: {msg}")
     for msg in report.critical_messages:
-        logger.critical(msg)
-        
+        print(f"❌ CRÍTICO: {msg}")
+
     if not report.is_ok:
         sys.exit(1)
 
@@ -96,8 +105,5 @@ if __name__ == "__main__":
     # 1. Iniciar Túnel de Red
     tunnel_runner.start_tunnel()
 
-    # 2. Ejecutar validaciones antes de iniciar el servidor
-    asyncio.run(startup_check())
-    
-    # 3. Correr servidor
+    # 2. Correr servidor (El lifespan se encargará del startup_check)
     uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -58,12 +58,8 @@ class SystemValidatorService:
         try:
             status = await self.messenger.get_webhook_status()
             
-            if status.url != self.webhook_url:
-                if not self.webhook_url:
-                    report.add_error("No se ha configurado WEBHOOK_URL.")
-                    return
-                
-                report.add_info(f"Sincronizando Webhook: '{status.url}' -> '{self.webhook_url}'")
+            if status.url != self.webhook_url or status.last_error_message:
+                report.add_info(f"Sincronizando Webhook (Limpieza de estado): '{self.webhook_url}'")
                 try:
                     await self.messenger.set_webhook(
                         url=self.webhook_url, 
@@ -71,7 +67,7 @@ class SystemValidatorService:
                     )
                     report.add_info("Webhook sincronizado con éxito.")
                 except Exception as e:
-                    report.add_error(f"Telegram rechazó el Webhook (400): {str(e)}")
+                    report.add_error(f"Telegram rechazó el Webhook: {str(e)}")
             else:
                 report.add_info(f"Webhook ya está sincronizado en: {status.url}")
             

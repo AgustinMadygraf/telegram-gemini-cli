@@ -6,16 +6,13 @@ from src.use_cases.process_message import ProcessMessageUseCase
 from src.entities.chat import ChatMessage
 from typing import Optional, Dict, Any
 
+
 class TelegramController:
     def __init__(self, use_case: ProcessMessageUseCase, secret_token: str):
         self.use_case = use_case
         self.secret_token = secret_token
 
     async def process_webhook_data(self, data: Dict[str, Any], x_token: Optional[str]) -> Optional[ChatMessage]:
-        """
-        Valida el secreto y extrae el mensaje del payload de Telegram.
-        Puro Python, sin dependencias de logging ni frameworks.
-        """
         # 1. Validar Token
         if self.secret_token and x_token != self.secret_token:
             # El controlador solo lanza la excepción, no loguea.

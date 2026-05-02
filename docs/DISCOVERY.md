@@ -17,5 +17,6 @@
 ### 1. Rigor del Túnel en Desarrollo
 - **Decisión**: Se ha flexibilizado la validación del túnel para permitir el arranque con `Warning` si el token falta, facilitando el desarrollo local.
 
-### 2. Multi-usuario y Contexto
-- **Duda**: Es crítico investigar si Gemini CLI soporta archivos de sesión por `chat_id` para evitar cruce de conversaciones.
+### 2. Multi-usuario y Contexto - RESUELTO
+- **Observación**: Gemini CLI requiere UUIDs para el flag `--resume`, lo que dificultaba el uso directo de `chat_id`.
+- **Solución**: Se utiliza la variable de entorno `GEMINI_CLI_HOME` para aislar el contexto de cada usuario en un directorio separado (`/tmp/gemini_sessions/{chat_id}`). Esto garantiza que cada conversación sea independiente y persistente sin riesgo de cruce.

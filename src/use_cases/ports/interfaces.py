@@ -69,12 +69,22 @@ class TunnelGateway(ABC):
 
 class ShellGateway(ABC):
     @abstractmethod
-    async def execute(self, args: List[str]) -> Tuple[int, str, str]:
+    async def execute(self, args: List[str], env: Optional[dict] = None) -> Tuple[int, str, str]:
         """Ejecuta un comando en el sistema y devuelve (return_code, stdout, stderr)."""
         pass
 
 class FileSystemGateway(ABC):
     @abstractmethod
     def exists(self, path: str) -> bool:
-        """Verifica si un path existe en el sistema de archivos."""
+        """Verifica si un archivo o directorio existe."""
+        pass
+
+    @abstractmethod
+    def write_file(self, path: str, content: str) -> None:
+        """Escribe contenido en un archivo."""
+        pass
+
+    @abstractmethod
+    def ensure_dir(self, path: str) -> None:
+        """Asegura que un directorio exista, creándolo si es necesario."""
         pass

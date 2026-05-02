@@ -17,9 +17,8 @@ class CloudflareTunnelRunner(TunnelGateway):
 
     async def validate_tunnel(self, url: Optional[str] = None) -> bool:
         """
-        Verifica si el proceso del túnel está vivo y si el host resuelve.
+        Verifica si el proceso del túnel está vivo.
         """
-        # 1. Verificar Proceso
         if not (self.process and self.process.poll() is None):
             return False
 
@@ -53,12 +52,15 @@ class CloudflareTunnelRunner(TunnelGateway):
             self.tunnel_name
         ]
 
-        # Iniciamos el proceso sin bloquear
+        # Iniciamos el proceso sin bloquear, guardando logs para diagnóstico
+        log_path = "tunnel.log"
+        log_file = open(log_path, "a")
+        
         self.process = subprocess.Popen(
             cmd,
-            stdout=subprocess.DEVNULL, # Mantenemos la consola limpia, o podríamos loguear a archivo
-            stderr=subprocess.PIPE,
-            preexec_fn=os.setsid # Permite matar a todo el grupo de procesos después
+            stdout=log_file,
+            stderr=log_file,
+            preexec_fn=os.setsid
         )
         
         # Esperar un momento a que el túnel intente conectar
