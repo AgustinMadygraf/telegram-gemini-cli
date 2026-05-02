@@ -40,3 +40,11 @@ Detalles técnicos y herramientas de bajo nivel.
 5.  **GeminiCLIAdapter** prepara el entorno aislado en `storage/sessions/` y ejecuta el comando.
 6.  **TelegramPresenter** escapa caracteres conflictivos y fragmenta el texto si excede los 4096 caracteres.
 7.  **TelegramAdapter** envía la respuesta final al usuario.
+
+---
+
+## Observabilidad y Trazabilidad
+
+El sistema no solo loguea peticiones HTTP, sino que aplica una política de **Falla Visible**:
+*   **Trazabilidad de Payloads**: Ante un error `400 Bad Request` de Telegram, el sistema captura y loguea el HTML exacto que causó el conflicto para facilitar el ajuste del Presenter.
+*   **Middleware de Auditoría**: Cada webhook es rastreado con su tiempo de ejecución y resultado, permitiendo detectar cuellos de botella en la IA.

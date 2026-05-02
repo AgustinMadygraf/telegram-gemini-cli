@@ -41,6 +41,7 @@ Para garantizar que el bot nunca falle al enviar una respuesta (problema común 
 *   **Librería `markdown`**: Convierte el formato de Gemini a HTML estándar.
 *   **Whitelist Filtering**: Se eliminan etiquetas no soportadas por Telegram, manteniendo solo negritas, cursivas y bloques de código.
 *   **Sanitización**: Se escapan automáticamente los caracteres reservados de HTML (`<`, `>`, `&`).
+*   **Observabilidad de Fallos**: Ante errores `400 Bad Request`, el sistema loguea el payload íntegro para identificar etiquetas HTML mal formadas.
 
 ---
 
