@@ -1,3 +1,7 @@
+"""
+Path: src/interface_adapters/gateways/gemini_gateway.py
+"""
+
 import asyncio
 import os
 from src.use_cases.ports.interfaces import AIEngineGateway, CredentialValidatorGateway

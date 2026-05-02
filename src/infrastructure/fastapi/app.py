@@ -1,3 +1,7 @@
+"""
+Path: src/infrastructure/fastapi/app.py
+"""
+
 from fastapi import FastAPI
 from src.interface_adapters.controllers.telegram_controller import TelegramController
 

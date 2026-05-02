@@ -1,3 +1,7 @@
+"""
+Path: src/infrastructure/setting/logger.py
+"""
+
 import logging
 
 def setup_logger():

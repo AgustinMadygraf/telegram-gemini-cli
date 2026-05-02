@@ -1,3 +1,7 @@
+"""
+Path: src/use_cases/process_message.py
+"""
+
 from src.entities.chat import ChatMessage
 from src.use_cases.ports.interfaces import AIEngineGateway, MessengerGateway
 from typing import List

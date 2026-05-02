@@ -1,3 +1,7 @@
+"""
+Path: src/interface_adapters/gateways/telegram_gateway.py
+"""
+
 from telegram import Bot
 from src.use_cases.ports.interfaces import MessengerGateway, CredentialValidatorGateway
 import logging

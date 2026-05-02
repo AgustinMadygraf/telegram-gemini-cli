@@ -1,3 +1,7 @@
+"""
+Path: src/entities/chat.py
+"""
+
 from dataclasses import dataclass
 from typing import Optional
 

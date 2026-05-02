@@ -1,3 +1,7 @@
+"""
+Path: src/interface_adapters/controllers/telegram_controller.py
+"""
+
 from fastapi import Request, BackgroundTasks, Header, HTTPException
 from src.use_cases.process_message import ProcessMessageUseCase
 from src.entities.chat import ChatMessage

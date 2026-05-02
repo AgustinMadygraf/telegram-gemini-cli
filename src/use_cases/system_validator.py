@@ -1,3 +1,7 @@
+"""
+Path: src/use_cases/system_validator.py
+"""
+
 from src.use_cases.ports.interfaces import CredentialValidatorGateway
 from typing import List
 import logging

@@ -1,3 +1,7 @@
+"""
+Path: src/use_cases/ports/interfaces.py
+"""
+
 from abc import ABC, abstractmethod
 from src.entities.chat import ChatMessage
 from src.entities.ai import AIResponse
