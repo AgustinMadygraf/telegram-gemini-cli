@@ -10,14 +10,15 @@
 ### Fase 2: Red, Túneles y OS (Completado)
 - [x] Implementar `CloudflareGateway`.
 - [x] Abstracción total del sistema (Shell & FileSystem).
-- [x] **Middleware de Observabilidad**.
+- [x] Middleware de Observabilidad.
 
-### Fase 3: Capa de Presentación (Prioridad Actual)
-- [ ] Implementar `TelegramPresenter` (Manejo de MarkdownV2).
-- [ ] Escapar caracteres especiales automáticamente.
-- [ ] Manejo de fragmentación de mensajes largos (>4096 caracteres).
+### Fase 3: Capa de Presentación (Completado)
+- [x] Implementar `TelegramPresenter` (Manejo de MarkdownV2).
+- [x] Escapar caracteres especiales automáticamente.
+- [x] Manejo de fragmentación de mensajes largos (>4096 caracteres).
 
-### Fase 4: Robustez y Errores
-- [ ] Investigar el error `400 Bad Request` en `set_webhook`.
-- [ ] Implementar modo "Dev" para saltar validaciones de túnel.
+### Fase 4: Robustez y Operación
+- [ ] Iniciar túnel de Cloudflare y verificar resolución de host.
+- [ ] Cambiar `ALLOWED_CHAT_IDS` por ID real del usuario.
+- [ ] Implementar comando `/reset` (limpieza de contexto).
 - [ ] Manejo de sesiones multi-usuario.
