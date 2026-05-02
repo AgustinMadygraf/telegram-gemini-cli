@@ -18,16 +18,17 @@ from src.infrastructure.shell.port_guard import PortGuard
 from src.infrastructure.shell.cloudflare_runner import CloudflareTunnelRunner
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
-import atexit
 from src.use_cases.process_message import ProcessMessageUseCase
 from src.use_cases.system_validator import SystemValidatorService
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Ejecutar validaciones dentro del loop de FastAPI
+    # 1. Startup
     await startup_check()
     yield
-    # Cleanup si fuera necesario (atexit ya maneja el túnel)
+    # 2. Shutdown
+    print("\n🛑 Apagando sistema de forma segura...")
+    tunnel_runner.stop_tunnel()
 
 # 0. Configurar Observabilidad
 setup_logger()
@@ -52,8 +53,7 @@ tunnel_runner = CloudflareTunnelRunner(
     local_url="http://localhost:8000"
 )
 
-# Garantizar cierre del túnel al salir
-atexit.register(tunnel_runner.stop_tunnel)
+# El túnel ahora se detiene en el lifespan
 
 # --- USE CASES ---
 validator_service = SystemValidatorService(
@@ -102,11 +102,16 @@ async def startup_check():
         sys.exit(1)
 
 if __name__ == "__main__":
-    # 0. Limpiar puerto si es necesario
-    PortGuard(port=8000).clean_port()
+    try:
+        # 0. Limpiar puerto si es necesario
+        PortGuard(port=8000).clean_port()
 
-    # 1. Iniciar Túnel de Red
-    tunnel_runner.start_tunnel()
+        # 1. Iniciar Túnel de Red
+        tunnel_runner.start_tunnel()
 
-    # 2. Correr servidor (El lifespan se encargará del startup_check)
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+        # 2. Correr servidor (El lifespan se encargará del startup_check y cleanup)
+        uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
+    except KeyboardInterrupt:
+        pass
+    finally:
+        print("👋 ¡Hasta luego!")
