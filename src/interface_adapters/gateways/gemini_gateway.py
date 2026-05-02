@@ -3,7 +3,7 @@ Path: src/interface_adapters/gateways/gemini_gateway.py
 """
 
 import os
-from typing import Optional
+from typing import Optional, List
 from src.use_cases.ports.interfaces import (
     AIEngineGateway, 
     CredentialValidatorGateway,
@@ -57,6 +57,7 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
 
     async def ask(self, prompt: str, session_id: str = "latest") -> AIResponse:
         """Ejecuta una consulta al CLI de Gemini delegando la ejecución al shell con aislamiento."""
+        return_code, stdout, stderr = -1, "", ""
         try:
             env = self._get_env_for_session(session_id)
             
