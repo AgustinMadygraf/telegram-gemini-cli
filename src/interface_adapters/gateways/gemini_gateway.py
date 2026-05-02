@@ -16,11 +16,13 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
         self, 
         shell: ShellGateway, 
         fs: FileSystemGateway,
-        binary_path: str = "/usr/local/bin/gemini"
+        binary_path: str = "/usr/local/bin/gemini",
+        api_key: Optional[str] = None
     ):
         self.shell = shell
         self.fs = fs
         self.binary_path = binary_path
+        self.api_key = api_key
         # Centralizamos en la nueva carpeta storage
         self.base_session_path = os.path.abspath("storage/sessions")
         self._ensure_base_path()
@@ -34,7 +36,12 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
         # Sanitizar session_id para evitar Path Traversal
         safe_id = "".join(c for c in session_id if c.isalnum() or c in ("_", "-"))
         session_path = os.path.join(self.base_session_path, safe_id)
-        return {"GEMINI_CLI_HOME": session_path}
+        
+        env = {"GEMINI_CLI_HOME": session_path}
+        if self.api_key:
+            env["GEMINI_API_KEY"] = self.api_key
+            
+        return env
 
     async def validate(self) -> bool:
         """Valida la existencia y ejecución del binario delegando al sistema."""

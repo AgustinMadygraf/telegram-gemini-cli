@@ -41,7 +41,8 @@ file_system = LocalFileSystem()
 gemini_gateway = GeminiCLIAdapter(
     shell=shell_runner, 
     fs=file_system,
-    binary_path=settings.GEMINI_BINARY_PATH
+    binary_path=settings.GEMINI_BINARY_PATH,
+    api_key=settings.GEMINI_API_KEY
 )
 telegram_gateway = TelegramAdapter(token=settings.TELEGRAM_BOT_TOKEN)
 tunnel_runner = CloudflareTunnelRunner(
