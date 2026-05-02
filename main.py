@@ -9,6 +9,7 @@ from src.infrastructure.setting.config import settings
 from src.infrastructure.setting.logger import setup_logger
 from src.interface_adapters.gateways.gemini_gateway import GeminiCLIAdapter
 from src.interface_adapters.gateways.telegram_gateway import TelegramAdapter
+from src.interface_adapters.gateways.cloudflare_gateway import CloudflareGateway
 from src.interface_adapters.controllers.telegram_controller import TelegramController
 from src.infrastructure.fastapi.app import create_app
 from src.use_cases.process_message import ProcessMessageUseCase
@@ -20,11 +21,16 @@ setup_logger()
 # 1. Instanciar Adaptadores de Infraestructura (Gateways)
 gemini_gateway = GeminiCLIAdapter(binary_path=settings.GEMINI_BINARY_PATH)
 telegram_gateway = TelegramAdapter(token=settings.TELEGRAM_BOT_TOKEN)
+cloudflare_gateway = CloudflareGateway(
+    token=settings.CLOUDFLARE_TOKEN, 
+    webhook_url=settings.WEBHOOK_URL
+)
 
 # 2. Instanciar Casos de Uso y Servicios
 validator_service = SystemValidatorService(
     validators=[gemini_gateway, telegram_gateway],
     messenger=telegram_gateway,
+    tunnel=cloudflare_gateway,
     webhook_url=settings.WEBHOOK_URL,
     secret_token=settings.WEBHOOK_SECRET_TOKEN
 )
@@ -45,11 +51,21 @@ telegram_controller = TelegramController(
 app = create_app(controller=telegram_controller)
 
 async def startup_check():
-    """Realiza las validaciones de inicio y detiene el sistema si fallan."""
-    if not await validator_service.validate_all():
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.critical("Fallo crítico en la validación del sistema. El proceso se detendrá.")
+    """Realiza las validaciones de inicio, loguea resultados y detiene el sistema si fallan."""
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    report = await validator_service.validate_all()
+    
+    # Procesar mensajes del reporte (Infraestructura decide cómo mostrarlos)
+    for msg in report.info_messages:
+        logger.info(msg)
+    for msg in report.error_messages:
+        logger.error(msg)
+    for msg in report.critical_messages:
+        logger.critical(msg)
+        
+    if not report.is_ok:
         sys.exit(1)
 
 if __name__ == "__main__":

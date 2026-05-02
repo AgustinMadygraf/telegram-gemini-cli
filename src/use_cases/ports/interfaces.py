@@ -3,7 +3,7 @@ Path: src/use_cases/ports/interfaces.py
 """
 
 from abc import ABC, abstractmethod
-from src.entities.chat import ChatMessage
+from typing import Optional
 from src.entities.ai import AIResponse
 from src.entities.network import WebhookStatus
 
@@ -43,4 +43,10 @@ class CredentialValidatorGateway(ABC):
     @abstractmethod
     async def validate(self) -> bool:
         """Valida que las credenciales sean correctas."""
+        pass
+
+class TunnelGateway(ABC):
+    @abstractmethod
+    async def validate_tunnel(self) -> bool:
+        """Verifica que el túnel esté activo y saludable."""
         pass
