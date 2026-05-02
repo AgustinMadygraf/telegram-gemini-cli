@@ -26,8 +26,14 @@ class ObservabilityMiddleware(BaseHTTPMiddleware):
             return response
 
         except PermissionError as e:
-            # Captura errores de seguridad lanzados por el controlador
-            logger.warning(f"AUDIT SECURITY: Intento de acceso no autorizado en {request.url.path} - {str(e)}")
+            # Captura errores de seguridad y da instrucciones al dev
+            user_id = str(e).split()[-4] if "User" in str(e) else "unknown"
+            logger.warning("="*50)
+            logger.warning(f"⚠️  SECURITY ALERT: Acceso denegado")
+            logger.warning(f"Mensaje recibido de ID: {user_id}")
+            logger.warning(f"Para permitirlo, agrégalo a ALLOWED_CHAT_IDS en tu .env")
+            logger.warning("="*50)
+            
             return JSONResponse(
                 status_code=403,
                 content={"detail": "Forbidden"}

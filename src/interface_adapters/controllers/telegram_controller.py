@@ -24,12 +24,17 @@ class TelegramController:
         # 2. Extraer ChatMessage
         if "message" in data and "text" in data["message"]:
             msg_data = data["message"]
-            return ChatMessage(
+            msg = ChatMessage(
                 chat_id=msg_data["chat"]["id"],
                 user_id=msg_data["from"]["id"],
                 text=msg_data["text"],
                 username=msg_data["from"].get("username")
             )
+            
+            # 3. Validar Usuario (Lanza PermissionError si no está en whitelist)
+            self.use_case.validate_user(msg.user_id)
+            
+            return msg
         
         return None
 

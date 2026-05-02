@@ -23,13 +23,12 @@ class ProcessMessageUseCase:
         self.presenter = presenter
         self.allowed_users = allowed_users
 
+    def validate_user(self, user_id: int) -> None:
+        if user_id not in self.allowed_users:
+            raise PermissionError(f"User {user_id} not in whitelist")
+
     async def execute(self, message: ChatMessage) -> None:
-        if message.user_id not in self.allowed_users:
-            await self.messenger.send_message(
-                message.chat_id, 
-                "Lo siento, no tienes permiso para usar este bot."
-            )
-            return
+        self.validate_user(message.user_id)
 
         # 1. Notificar estado (Typing)
         await self.messenger.set_typing(message.chat_id)
