@@ -37,7 +37,7 @@ class TelegramPresenter(MessagePresenter):
         parts = re.split(r'(```[\s\S]*?```|`.*?`)', text)
         
         escaped_parts = []
-        special_chars = r"_*[]()~`>#+-=|{}.!"
+        special_chars = r"_*[]()~`>#+-=|{}.!:"
         
         for i, part in enumerate(parts):
             # Si el índice es par, es texto normal (fuera de bloques de código)
@@ -56,7 +56,7 @@ class TelegramPresenter(MessagePresenter):
                     inner = part[3:-3]
                     # No escapamos el contenido interno de pre si usamos MarkdownV2 correctamente,
                     # PERO los delimitadores deben estar bien.
-                    escaped_parts.append(f"```\n{inner}\n```")
+                    escaped_parts.append(f"```\n{inner.strip()}\n```")
                 else:
                     # Código inline
                     inner = part[1:-1]

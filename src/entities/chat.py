@@ -11,3 +11,7 @@ class ChatMessage:
     user_id: int
     text: str
     username: Optional[str] = None
+
+    @property
+    def is_command(self) -> bool:
+        return self.text.startswith("/")

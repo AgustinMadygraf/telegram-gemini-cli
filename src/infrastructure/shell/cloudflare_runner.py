@@ -78,4 +78,5 @@ class CloudflareTunnelRunner(TunnelGateway):
             except Exception:
                 if self.process:
                     self.process.kill()
+            self.process = None
             print("✅ Túnel detenido.")

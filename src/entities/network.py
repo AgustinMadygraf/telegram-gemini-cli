@@ -6,6 +6,11 @@ from dataclasses import dataclass
 from typing import Optional
 
 @dataclass
+class NetworkState:
+    webhook_url: str
+    is_healthy: bool
+
+@dataclass
 class WebhookStatus:
     url: str
     has_custom_certificate: bool
