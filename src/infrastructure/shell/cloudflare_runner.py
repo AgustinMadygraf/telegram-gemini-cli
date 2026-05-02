@@ -52,8 +52,10 @@ class CloudflareTunnelRunner(TunnelGateway):
             self.tunnel_name
         ]
 
-        # Iniciamos el proceso sin bloquear, guardando logs para diagnóstico
-        log_path = "tunnel.log"
+        # Iniciamos el proceso sin bloquear, guardando logs en storage/logs
+        log_dir = "storage/logs"
+        os.makedirs(log_dir, exist_ok=True)
+        log_path = os.path.join(log_dir, "tunnel.log")
         log_file = open(log_path, "a")
         
         self.process = subprocess.Popen(

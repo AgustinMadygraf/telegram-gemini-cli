@@ -21,8 +21,8 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
         self.shell = shell
         self.fs = fs
         self.binary_path = binary_path
-        # Usamos una ruta persistente en el proyecto en lugar de /tmp
-        self.base_session_path = os.path.abspath("sessions")
+        # Centralizamos en la nueva carpeta storage
+        self.base_session_path = os.path.abspath("storage/sessions")
         self._ensure_base_path()
 
     def _ensure_base_path(self):
