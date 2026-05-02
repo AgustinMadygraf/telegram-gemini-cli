@@ -16,6 +16,7 @@ from src.infrastructure.shell.asyncio_runner import AsyncioShellRunner
 from src.infrastructure.shell.local_filesystem import LocalFileSystem
 from src.infrastructure.shell.port_guard import PortGuard
 from src.infrastructure.shell.cloudflare_runner import CloudflareTunnelRunner
+from src.infrastructure.markdown.markdown_adapter import PythonMarkdownAdapter
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from src.use_cases.process_message import ProcessMessageUseCase
@@ -65,7 +66,8 @@ validator_service = SystemValidatorService(
 )
 
 # 2. Instanciar Casos de Uso y Servicios
-telegram_presenter = TelegramPresenter()
+markdown_converter = PythonMarkdownAdapter()
+telegram_presenter = TelegramPresenter(markdown_converter=markdown_converter)
 
 process_message_use_case = ProcessMessageUseCase(
     ai_engine=gemini_gateway,

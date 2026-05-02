@@ -38,6 +38,9 @@ def test_interfaces_methods_coverage():
         def delete(self, p): super().delete(p)
         def ensure_dir(self, p): super().ensure_dir(p)
 
+    class DummyMarkdown(interfaces.MarkdownConverterPort):
+        def to_html(self, t): super().to_html(t)
+
     # Solo instanciamos y llamamos (ignorando el NotImplementedError si ocurriera)
     # pero al usar super().metodo() tocamos la línea 'pass' en la clase base.
     # Nota: super() en un abstractmethod con pass no lanza error si el padre es ABC.

@@ -88,3 +88,9 @@ class FileSystemGateway(ABC):
     def ensure_dir(self, path: str) -> None:
         """Asegura que un directorio exista, creándolo si es necesario."""
         pass
+
+class MarkdownConverterPort(ABC):
+    @abstractmethod
+    def to_html(self, text: str) -> str:
+        """Convierte texto Markdown a HTML."""
+        pass
