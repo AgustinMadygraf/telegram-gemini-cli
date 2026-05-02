@@ -7,6 +7,7 @@ El sistema "Telegram Gemini CLI Bridge" es un intermediario entre Telegram y `ge
 - **Stack**: Python, FastAPI, Cloudflare Tunnel.
 - **Seguridad**: Whitelist de usuarios, validación de secretos de Webhook y **Hard Exit**.
 - **Independencia del OS**: El núcleo no depende de `asyncio` o `os` directamente, sino de gateways de sistema.
+- **Observabilidad Pasiva**: El sistema utiliza un `ValidationReport` para auditoría inicial y un **Middleware de Red** para auditoría operacional.
 
 ## 3. Arquitectura Limpia y capas
 
@@ -22,17 +23,16 @@ El sistema "Telegram Gemini CLI Bridge" es un intermediario entre Telegram y `ge
 
 ### Capa 3: Adaptadores de Interfaz (src/interface_adapters)
 - **Controllers**: `TelegramController` (Puro Python).
-- **Gateways**: `TelegramGateway`, `GeminiGateway`, `CloudflareGateway`. Todos libres de lógica de infraestructura.
-- **Presenters**: Formateo de salida para el usuario final (Pendiente).
+- **Gateways**: `TelegramGateway`, `GeminiGateway`, `CloudflareGateway`. Todos libres de lógica de infraestructura y logs.
 
 ### Capa 4: Infraestructura (src/infrastructure)
-- **fastapi/**: Servidor Web y traducción HTTP.
-- **shell/**: Ejecución real de comandos (`asyncio`) y sistema de archivos (`os`).
+- **fastapi/**: Servidor Web, Middleware de Observabilidad y traducción HTTP.
+- **shell/**: Implementaciones de `ShellGateway` y `FileSystemGateway` usando `asyncio` y `os`.
 - **setting/**: `config.py` y `logger.py`.
 
 ## 4. Validación de Salud (Deep Health Check)
-El sistema valida secuencialmente:
+El sistema valida secuencialmente antes del arranque:
 1. **Credenciales**: Token de Bot y Binario de Gemini.
-2. **Sistema**: Disponibilidad de binarios y permisos de archivos.
+2. **Sistema**: Disponibilidad de binarios y permisos de archivos vía `FileSystemGateway`.
 3. **Túnel**: Verificación de estado del túnel de Cloudflare.
 4. **Red**: Sincronización automática de URL de Webhook en Telegram.
