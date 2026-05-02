@@ -3,6 +3,7 @@ Path: src/interface_adapters/gateways/gemini_gateway.py
 """
 
 import os
+from typing import Optional
 from src.use_cases.ports.interfaces import (
     AIEngineGateway, 
     CredentialValidatorGateway,

@@ -8,7 +8,6 @@ import sys
 from src.infrastructure.setting.config import settings
 from src.infrastructure.setting.logger import setup_logger
 from src.interface_adapters.gateways.gemini_gateway import GeminiCLIAdapter
-from src.interface_adapters.gateways.gemini_gateway import GeminiCLIAdapter
 from src.interface_adapters.gateways.telegram_gateway import TelegramAdapter
 from src.interface_adapters.controllers.telegram_controller import TelegramController
 from src.interface_adapters.presenters.telegram_presenter import TelegramPresenter
