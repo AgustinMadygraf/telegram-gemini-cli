@@ -15,6 +15,7 @@ from src.interface_adapters.presenters.telegram_presenter import TelegramPresent
 from src.infrastructure.fastapi.app import create_app
 from src.infrastructure.shell.asyncio_runner import AsyncioShellRunner
 from src.infrastructure.shell.local_filesystem import LocalFileSystem
+from src.infrastructure.shell.port_guard import PortGuard
 from src.use_cases.process_message import ProcessMessageUseCase
 from src.use_cases.system_validator import SystemValidatorService
 
@@ -84,8 +85,11 @@ async def startup_check():
         sys.exit(1)
 
 if __name__ == "__main__":
-    # Ejecutar validaciones antes de iniciar el servidor
+    # 0. Limpiar puerto si es necesario
+    PortGuard(port=8000).clean_port()
+
+    # 1. Ejecutar validaciones antes de iniciar el servidor
     asyncio.run(startup_check())
     
-    # Correr servidor
+    # 2. Correr servidor
     uvicorn.run(app, host="0.0.0.0", port=8000)
