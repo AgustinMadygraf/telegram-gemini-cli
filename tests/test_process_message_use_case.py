@@ -38,7 +38,7 @@ async def test_execute_success(mock_ai, mock_messenger, mock_presenter):
     mock_messenger.send_message.assert_called_with(
         chat_id=456, 
         text="formatted message",
-        parse_mode="MarkdownV2"
+        parse_mode="HTML"
     )
 
 @pytest.mark.asyncio

@@ -20,8 +20,8 @@ class TelegramAdapter(MessengerGateway, CredentialValidatorGateway):
         except Exception:
             return False
 
-    async def send_message(self, chat_id: int, text: str, parse_mode: Optional[str] = None) -> bool:
-        """Envía mensajes."""
+    async def send_message(self, chat_id: int, text: str, parse_mode: str = "HTML") -> bool:
+        """Envía mensajes usando HTML por defecto para máxima estabilidad."""
         try:
             await self.bot.send_message(
                 chat_id=chat_id, 
@@ -53,14 +53,10 @@ class TelegramAdapter(MessengerGateway, CredentialValidatorGateway):
         )
 
     async def set_webhook(self, url: str, secret_token: Optional[str] = None) -> bool:
-        """
-        Registra la URL del webhook. 
-        Lanza TelegramError si la API responde con error (ej: 400).
-        """
+        """Registra la URL del webhook."""
         try:
             return await self.bot.set_webhook(url=url, secret_token=secret_token)
         except TelegramError as e:
-            # Lanzamos el error para que el caso de uso pueda reportar el detalle
             raise e
         except Exception:
             return False

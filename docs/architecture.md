@@ -20,7 +20,7 @@ Traductores entre el mundo exterior y la aplicación.
 *   **Gateways**: Implementaciones de los puertos definidos en `use_cases/ports`.
     *   `GeminiCLIAdapter`: Se comunica con el binario de Gemini.
     *   `TelegramAdapter`: Se comunica con la API de Telegram.
-*   **Presenters**: Formatean la salida para plataformas específicas (ej: escapar MarkdownV2).
+*   **Presenters**: Formatean la salida para plataformas específicas (ej: convertir Markdown de Gemini a HTML de Telegram).
 *   **Controllers**: Reciben los webhooks de FastAPI y los transforman en entidades de dominio.
 
 ### 4. Infraestructura (`src/infrastructure`)

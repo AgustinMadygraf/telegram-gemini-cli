@@ -25,10 +25,11 @@ class ProcessMessageUseCase:
 
     async def validate_user(self, user_id: int, chat_id: int) -> None:
         if user_id not in self.allowed_users:
-            # Enviar mensaje de cortesía al usuario en Telegram
+            # Enviar mensaje de cortesía al usuario en Telegram (Usando HTML)
             await self.messenger.send_message(
                 chat_id, 
-                f"⚠️ *Acceso denegado*\nSu ID de usuario (`{user_id}`) no está autorizado para usar este bot\\. Contacte con el administrador\\."
+                f"⚠️ <b>Acceso denegado</b>\nSu ID de usuario (<code>{user_id}</code>) no está autorizado. Contacte con el administrador.",
+                parse_mode="HTML"
             )
             raise PermissionError(f"User {user_id} not in whitelist")
 
@@ -43,14 +44,14 @@ class ProcessMessageUseCase:
             if success:
                 await self.messenger.send_message(
                     chat_id=message.chat_id, 
-                    text="🔄 *Contexto reiniciado*\nSe ha limpiado el historial de la conversación\\.",
-                    parse_mode="MarkdownV2"
+                    text="🔄 <b>Contexto reiniciado</b>\nSe ha limpiado el historial de la conversación.",
+                    parse_mode="HTML"
                 )
             else:
                 await self.messenger.send_message(
                     chat_id=message.chat_id, 
-                    text="❌ *Error*\nNo se pudo reiniciar el contexto\\.",
-                    parse_mode="MarkdownV2"
+                    text="❌ <b>Error</b>\nNo se pudo reiniciar el contexto.",
+                    parse_mode="HTML"
                 )
             return
 
@@ -61,7 +62,7 @@ class ProcessMessageUseCase:
         response = await self.ai_engine.ask(message.text, session_id=session_id)
         
         # 3. Formatear respuesta vía Presenter (Capa de Presentación)
-        # El presenter se encarga de escapar MarkdownV2 y fragmentar si es largo.
+        # El presenter ahora convierte Markdown a HTML robusto.
         formatted_messages = self.presenter.format_response(response)
 
         # 4. Enviar cada fragmento resultante
@@ -69,5 +70,5 @@ class ProcessMessageUseCase:
             await self.messenger.send_message(
                 chat_id=message.chat_id, 
                 text=msg_text,
-                parse_mode="MarkdownV2"
+                parse_mode="HTML"
             )

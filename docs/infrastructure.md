@@ -30,5 +30,47 @@ El directorio `storage/` es el único lugar donde el bot escribe datos en disco:
 
 Al iniciar, el `SystemValidatorService` ejecuta una secuencia crítica:
 1.  **Binario Gemini**: Comprueba que el CLI está instalado.
-2.  **Auth Ping**: Realiza una consulta mínima (`gemini -p hi`) para verificar que las credenciales (API Key o Google Auth) son válidas. Si la IA responde "Unauthorized", el sistema se detiene.
-3.  **Network Sync**: Consulta a Telegram el estado del Webhook. Si la URL configurada no coincide con la registrada en los servidores de Telegram, la sincroniza automáticamente.
+2.  **Auth Ping**: Realiza una consulta mínima (`gemini -p hi`) para verificar que las credenciales son válidas.
+3.  **Network Sync**: Sincroniza el Webhook con Telegram.
+
+---
+
+## 🌐 Estabilidad de Mensajería (HTML)
+
+Para garantizar que el bot nunca falle al enviar una respuesta (problema común con MarkdownV2), el sistema utiliza:
+*   **Librería `markdown`**: Convierte el formato de Gemini a HTML estándar.
+*   **Whitelist Filtering**: Se eliminan etiquetas no soportadas por Telegram, manteniendo solo negritas, cursivas y bloques de código.
+*   **Sanitización**: Se escapan automáticamente los caracteres reservados de HTML (`<`, `>`, `&`).
+
+---
+
+## 🛠️ Debugging y Testing desde la CLI
+
+Si deseas probar el comportamiento del `gemini-cli` replicando exactamente lo que ve el bot (mismo historial y aislamiento), sigue estos pasos desde la terminal en la raíz del proyecto:
+
+### 1. Replicar el Entorno de Sesión
+El bot utiliza la variable `GEMINI_CLI_HOME` para aislar cada chat. Para entrar en una sesión específica:
+```bash
+# Reemplaza <ID> por el ID del chat (ej: chat_1234567)
+export GEMINI_CLI_HOME=storage/sessions/chat_<ID>
+```
+
+### 2. Ejecutar Consultas Manuales
+Una vez exportada la variable, cualquier comando `gemini` que ejecutes usará esa base de datos de sesión:
+```bash
+# Para continuar la conversación del bot
+gemini --resume -p "Hola, ¿qué dijimos antes?"
+
+# Para ver la configuración de esa sesión específica
+gemini --info
+```
+
+### 3. Verificar Credenciales
+Si el bot usa una `GEMINI_API_KEY` del `.env`, también debes exportarla para que el CLI la reconozca:
+```bash
+export GEMINI_API_KEY="tu_llave_aqui"
+```
+
+### 4. Inspección de Archivos
+Puedes ver físicamente los archivos de configuración y base de datos de esa sesión en:
+`ls -la storage/sessions/chat_<ID>/.gemini/`

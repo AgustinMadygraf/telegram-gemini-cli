@@ -3,73 +3,77 @@ Path: src/interface_adapters/presenters/telegram_presenter.py
 """
 
 import re
+import markdown
 from typing import List
-from src.use_cases.ports.interfaces import MessagePresenter
 from src.entities.ai import AIResponse
 
-class TelegramPresenter(MessagePresenter):
-    def __init__(self, max_length: int = 4090):
-        self.max_length = max_length
-
+class TelegramPresenter:
     def format_response(self, response: AIResponse) -> List[str]:
         """
-        Formatea la respuesta para Telegram MarkdownV2.
-        1. Maneja errores.
-        2. Escapa caracteres especiales.
+        1. Convierte Markdown a HTML básico.
+        2. Limpia etiquetas no soportadas por Telegram.
         3. Fragmenta si es necesario.
         """
         if not response.success:
-            error_msg = f"❌ *Error de IA*:\n_{self._escape(response.error_message)}_"
+            # Escapamos solo caracteres básicos de HTML para el error
+            error_text = response.error_message.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            error_msg = f"❌ <b>Error de IA</b>:\n<i>{error_text}</i>"
             return [error_msg]
 
-        text = response.text
-        # Aquí podríamos procesar el texto (ej: convertir negritas de Markdown a MarkdownV2)
-        # Por ahora, nos aseguramos de que sea seguro para Telegram.
-        
-        escaped_text = self._escape(text)
-        return self._chunk_text(escaped_text)
+        # 1. Convertir Markdown a HTML
+        # Usamos extensiones básicas para manejar tablas y bloques de código
+        raw_html = markdown.markdown(
+            response.text, 
+            extensions=['fenced_code', 'tables', 'nl2br']
+        )
 
-    def _escape(self, text: str) -> str:
-        """
-        Escapa caracteres especiales para Telegram MarkdownV2, preservando bloques de código.
-        """
-        # 1. Dividir por bloques de código (```...```) para no escapar su contenido de forma agresiva
-        parts = re.split(r'(```[\s\S]*?```|`.*?`)', text)
+        # 2. Adaptar HTML para Telegram (Whitelist)
+        telegram_html = self._sanitize_for_telegram(raw_html)
         
-        escaped_parts = []
-        special_chars = r"_*[]()~`>#+-=|{}.!:"
-        
-        for i, part in enumerate(parts):
-            # Si el índice es par, es texto normal (fuera de bloques de código)
-            if i % 2 == 0:
-                # Escapamos todos los caracteres especiales en texto plano
-                escaped_part = re.sub(f"([{re.escape(special_chars)}])", r"\\\1", part)
-                escaped_parts.append(escaped_part)
-            else:
-                # Es un bloque de código. Solo escapamos lo mínimo necesario para el bloque.
-                # En MarkdownV2 dentro de ``` o `, solo se deben escapar \ y `
-                # Pero en la práctica, Telegram es más permisivo dentro de bloques pre.
-                # Sin embargo, si el bloque de código tiene backticks dentro, hay que tener cuidado.
-                if part.startswith('```'):
-                    # Bloque preformateado
-                    # Escapamos solo contra-barras y backticks que cerrarían el bloque prematuramente
-                    inner = part[3:-3]
-                    # No escapamos el contenido interno de pre si usamos MarkdownV2 correctamente,
-                    # PERO los delimitadores deben estar bien.
-                    escaped_parts.append(f"```\n{inner.strip()}\n```")
-                else:
-                    # Código inline
-                    inner = part[1:-1]
-                    escaped_parts.append(f"`{inner}`")
-                    
-        return "".join(escaped_parts)
+        # 3. Fragmentar por el límite de Telegram (4096 caracteres)
+        return self._chunk_text(telegram_html)
 
-    def _chunk_text(self, text: str) -> List[str]:
-        """Divide el texto en fragmentos que Telegram pueda procesar."""
-        if len(text) <= self.max_length:
+    def _sanitize_for_telegram(self, html: str) -> str:
+        """
+        Filtra el HTML para que solo contenga etiquetas soportadas por Telegram:
+        <b>, <i>, <u>, <s>, <code>, <pre>, <a>
+        """
+        # Reemplazar encabezados h1-h6 por negritas
+        html = re.sub(r'<(h[1-6])>(.*?)</\1>', r'<b>\2</b>\n', html)
+        
+        # Reemplazar strong/em por b/i
+        html = html.replace('<strong>', '<b>').replace('</strong>', '</b>')
+        html = html.replace('<em>', '<i>').replace('</em>', '</i>')
+        
+        # Eliminar párrafos (reemplazar por saltos de línea)
+        html = html.replace('<p>', '').replace('</p>', '\n')
+        
+        # Eliminar listas y otros elementos estructurales no soportados
+        # (Conservamos el contenido pero quitamos las etiquetas ul, li, div, etc)
+        html = re.sub(r'</?(ul|ol|li|div|span|br)>', '', html)
+        
+        # Limpieza final de espacios duplicados
+        html = html.strip()
+        
+        return html
+
+    def _chunk_text(self, text: str, limit: int = 4000) -> List[str]:
+        """Fragmenta el texto respetando el límite de Telegram."""
+        if len(text) <= limit:
             return [text]
-        
+            
         chunks = []
-        for i in range(0, len(text), self.max_length):
-            chunks.append(text[i:i + self.max_length])
+        while text:
+            if len(text) <= limit:
+                chunks.append(text)
+                break
+            
+            # Buscamos el último salto de línea dentro del límite para no romper palabras
+            split_pos = text.rfind('\n', 0, limit)
+            if split_pos == -1:
+                split_pos = limit
+            
+            chunks.append(text[:split_pos])
+            text = text[split_pos:].strip()
+            
         return chunks
