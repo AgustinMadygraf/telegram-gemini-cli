@@ -33,8 +33,11 @@ class SystemValidatorService:
         
         # 2. Validar Túnel (Cloudflare)
         if self.tunnel:
+            report.add_info(f"Validando estado del túnel para: {self.webhook_url}")
             if not await self.tunnel.validate_tunnel():
-                report.add_error("El túnel de comunicación no está saludable.")
+                report.add_error("El túnel de comunicación no está saludable o el token no ha sido configurado.")
+        else:
+            report.add_info("No se ha configurado un gestor de túneles. Se omite validación profunda.")
 
         # 3. Validar y Sincronizar Red (Webhook)
         if self.messenger:
