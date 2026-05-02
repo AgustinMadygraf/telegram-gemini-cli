@@ -37,12 +37,18 @@ def test_presenter_formats_error_response(presenter):
     assert "<b>Error de IA</b>" in formatted[0]
     assert "&lt;critico&gt;" in formatted[0]
 
-def test_presenter_logs_conversion_error(presenter, mock_markdown, mock_logger):
-    # Simulamos error en la librería
-    mock_markdown.to_html.side_effect = Exception("Markdown crash")
-    
+def test_presenter_converts_lists_and_cleans_code(presenter, mock_markdown):
+    mock_markdown.to_html.return_value = '<ul><li>Item 1</li></ul><pre><code class="language-py">print()</code></pre>'
     resp = AIResponse(text="any", success=True)
-    presenter.format_response(resp)
-    
-    # Verificamos que se usó el puerto de logging inyectado
-    mock_logger.error.assert_called()
+    formatted = presenter.format_response(resp)
+    assert "• Item 1" in formatted[0]
+    assert "<ul>" not in formatted[0]
+    assert '<code class="language-py">' not in formatted[0]
+    assert '<code>' in formatted[0]
+
+def test_presenter_replaces_br_with_newline(presenter, mock_markdown):
+    mock_markdown.to_html.return_value = 'Texto<br>con<br />saltos'
+    resp = AIResponse(text="any", success=True)
+    formatted = presenter.format_response(resp)
+    assert "Texto\ncon\nsaltos" in formatted[0]
+    assert "<br" not in formatted[0]

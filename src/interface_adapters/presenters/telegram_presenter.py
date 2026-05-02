@@ -44,6 +44,10 @@ class TelegramPresenter:
         html = html.replace('<strong>', '<b>').replace('</strong>', '</b>')
         html = html.replace('<em>', '<i>').replace('</em>', '</i>')
         
+        # E. Eliminación de etiquetas estructurales no permitidas (Whitelist Negativa)
+        # Reemplazamos <br> por salto de línea antes de eliminar el resto
+        html = re.sub(r'<br\s*/?>', '\n', html)
+        
         unsupported = ['ul', 'ol', 'p', 'div', 'span', 'table', 'tbody', 'tr', 'td', 'thead', 'hr']
         for tag in unsupported:
             html = re.sub(f'</?{tag}.*?>', '', html)
