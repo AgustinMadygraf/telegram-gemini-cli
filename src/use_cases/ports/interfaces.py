@@ -94,3 +94,13 @@ class MarkdownConverterPort(ABC):
     def to_html(self, text: str) -> str:
         """Convierte texto Markdown a HTML."""
         pass
+
+class LoggerPort(ABC):
+    @abstractmethod
+    def info(self, msg: str) -> None: pass
+    @abstractmethod
+    def error(self, msg: str) -> None: pass
+    @abstractmethod
+    def debug(self, msg: str) -> None: pass
+    @abstractmethod
+    def warning(self, msg: str) -> None: pass

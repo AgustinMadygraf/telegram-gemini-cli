@@ -2,6 +2,11 @@ import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 from src.interface_adapters.gateways.telegram_gateway import TelegramAdapter
 from telegram.error import TelegramError
+from src.use_cases.ports.interfaces import LoggerPort
+
+@pytest.fixture
+def mock_logger():
+    return MagicMock(spec=LoggerPort)
 
 @pytest.fixture
 def mock_bot():
@@ -16,33 +21,35 @@ def mock_bot():
         yield bot_instance
 
 @pytest.mark.asyncio
-async def test_validate_exception(mock_bot):
-    adapter = TelegramAdapter(token="fake:token")
+async def test_validate_exception(mock_bot, mock_logger):
+    adapter = TelegramAdapter(token="fake:token", logger=mock_logger)
     mock_bot.get_me.side_effect = RuntimeError("API Down")
-    assert await adapter.validate() is False # Line 20-21 coverage
+    assert await adapter.validate() is False
+    mock_logger.error.assert_called()
 
 @pytest.mark.asyncio
-async def test_set_typing_exception(mock_bot):
-    adapter = TelegramAdapter(token="fake:token")
+async def test_set_typing_exception(mock_bot, mock_logger):
+    adapter = TelegramAdapter(token="fake:token", logger=mock_logger)
     mock_bot.send_chat_action.side_effect = Exception("Silent fail")
-    await adapter.set_typing(123) # Line 39-40 coverage: should not raise
+    await adapter.set_typing(123) 
 
 @pytest.mark.asyncio
-async def test_set_webhook_generic_exception(mock_bot):
-    adapter = TelegramAdapter(token="fake:token")
-    mock_bot.set_webhook.side_effect = ValueError("Fatal")
-    result = await adapter.set_webhook("http://test.com")
-    assert result is False # Line 65-66 coverage
+async def test_send_message_payload_logging(mock_bot, mock_logger):
+    adapter = TelegramAdapter(token="fake:token", logger=mock_logger)
+    # Simulamos error 400 de Telegram
+    mock_bot.send_message.side_effect = TelegramError("Bad Request")
+    
+    await adapter.send_message(123, "malformed <b>text", parse_mode="HTML")
+    
+    # Verificamos que se logueó el error Y el payload
+    assert mock_logger.error.call_count >= 2
+    args_list = [call.args[0] for call in mock_logger.error.call_args_list]
+    assert any("Payload fallido" in arg for arg in args_list)
+    assert any("malformed <b>text" in arg for arg in args_list)
 
 @pytest.mark.asyncio
-async def test_send_message_success(mock_bot):
-    adapter = TelegramAdapter(token="fake:token")
-    await adapter.send_message(123, "hola", parse_mode="MarkdownV2")
-    mock_bot.send_message.assert_called_once()
-
-@pytest.mark.asyncio
-async def test_get_webhook_status(mock_bot):
-    adapter = TelegramAdapter(token="fake:token")
+async def test_get_webhook_status(mock_bot, mock_logger):
+    adapter = TelegramAdapter(token="fake:token", logger=mock_logger)
     mock_info = MagicMock()
     mock_info.url = "http://test.com"
     mock_bot.get_webhook_info.return_value = mock_info

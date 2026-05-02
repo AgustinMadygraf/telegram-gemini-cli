@@ -12,6 +12,7 @@ from src.interface_adapters.gateways.telegram_gateway import TelegramAdapter
 from src.interface_adapters.controllers.telegram_controller import TelegramController
 from src.interface_adapters.presenters.telegram_presenter import TelegramPresenter
 from src.infrastructure.fastapi.app import create_app
+from src.infrastructure.setting.logger import setup_logger, StandardLoggerAdapter
 from src.infrastructure.shell.asyncio_runner import AsyncioShellRunner
 from src.infrastructure.shell.local_filesystem import LocalFileSystem
 from src.infrastructure.shell.port_guard import PortGuard
@@ -48,7 +49,11 @@ gemini_gateway = GeminiCLIAdapter(
     vertex_project=settings.VERTEX_PROJECT_ID,
     vertex_location=settings.VERTEX_LOCATION
 )
-telegram_gateway = TelegramAdapter(token=settings.TELEGRAM_BOT_TOKEN)
+telegram_logger = StandardLoggerAdapter("telegram_gateway")
+telegram_gateway = TelegramAdapter(
+    token=settings.TELEGRAM_BOT_TOKEN, 
+    logger=telegram_logger
+)
 tunnel_runner = CloudflareTunnelRunner(
     tunnel_name="gemini-bridge", 
     local_url="http://localhost:8000"
@@ -67,7 +72,11 @@ validator_service = SystemValidatorService(
 
 # 2. Instanciar Casos de Uso y Servicios
 markdown_converter = PythonMarkdownAdapter()
-telegram_presenter = TelegramPresenter(markdown_converter=markdown_converter)
+presenter_logger = StandardLoggerAdapter("telegram_presenter")
+telegram_presenter = TelegramPresenter(
+    markdown_converter=markdown_converter,
+    logger=presenter_logger
+)
 
 process_message_use_case = ProcessMessageUseCase(
     ai_engine=gemini_gateway,
