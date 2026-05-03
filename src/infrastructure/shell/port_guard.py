@@ -7,10 +7,12 @@ import os
 import signal
 import subprocess
 from typing import Optional
+from src.use_cases.ports.interfaces import LoggerPort
 
 class PortGuard:
-    def __init__(self, port: int):
+    def __init__(self, port: int, logger: LoggerPort):
         self.port = port
+        self.logger = logger
 
     def is_port_in_use(self) -> bool:
         """Verifica si el puerto está ocupado."""
@@ -25,27 +27,29 @@ class PortGuard:
         if not self.is_port_in_use():
             return True
 
-        print(f"🔍 Puerto {self.port} ocupado. Intentando liberar...")
+        self.logger.info(f"🔍 Puerto {self.port} ocupado. Intentando liberar...")
         
         try:
             # Buscamos el PID que ocupa el puerto (específico de Linux)
             cmd = f"lsof -t -i:{self.port}"
             pid_bytes = subprocess.check_output(cmd.split())
-            pid = int(pid_bytes.decode().strip())
+            pids = pid_bytes.decode().strip().split('\n')
             
-            if pid:
-                print(f"⚠️ Terminando proceso intruso (PID: {pid})...")
+            for pid_str in pids:
+                if not pid_str: continue
+                pid = int(pid_str)
+                self.logger.warning(f"⚠️ Terminando proceso intruso (PID: {pid})...")
                 os.kill(pid, signal.SIGTERM)
+            
+            # Esperar un momento a que el OS libere el socket
+            import time
+            time.sleep(1)
+            
+            if not self.is_port_in_use():
+                self.logger.info(f"✅ Puerto {self.port} liberado exitosamente.")
+                return True
                 
-                # Esperar un momento a que el OS libere el socket
-                import time
-                time.sleep(1)
-                
-                if not self.is_port_in_use():
-                    print(f"✅ Puerto {self.port} liberado exitosamente.")
-                    return True
-                    
         except Exception as e:
-            print(f"❌ No se pudo liberar el puerto automáticamente: {e}")
+            self.logger.error(f"❌ No se pudo liberar el puerto automáticamente: {e}")
             
         return not self.is_port_in_use()

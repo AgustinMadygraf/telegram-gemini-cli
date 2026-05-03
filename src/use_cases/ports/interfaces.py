@@ -6,6 +6,35 @@ from abc import ABC, abstractmethod
 from typing import Optional, Tuple, List
 from src.entities.ai import AIResponse
 from src.entities.network import WebhookStatus
+# ChatMessage se importa más abajo para evitar acoplamiento temprano si fuera necesario, 
+# pero aquí lo moveremos arriba para consistencia si no hay circulares.
+from src.entities.chat import ChatMessage
+
+class LoggerPort(ABC):
+    @abstractmethod
+    def info(self, msg: str) -> None:
+        """Loguea un mensaje informativo."""
+        pass
+
+    @abstractmethod
+    def error(self, msg: str) -> None:
+        """Loguea un mensaje de error."""
+        pass
+
+    @abstractmethod
+    def debug(self, msg: str) -> None:
+        """Loguea un mensaje de depuración."""
+        pass
+
+    @abstractmethod
+    def warning(self, msg: str) -> None:
+        """Loguea una advertencia."""
+        pass
+
+    @abstractmethod
+    def critical(self, msg: str) -> None:
+        """Loguea un fallo crítico del sistema."""
+        pass
 
 class AIEngineGateway(ABC):
     @abstractmethod
@@ -127,8 +156,6 @@ class MarkdownConverterPort(ABC):
         """Convierte texto Markdown a HTML."""
         pass
 
-from src.entities.chat import ChatMessage
-
 class ChatHistoryGateway(ABC):
     @abstractmethod
     async def save_message(self, message: ChatMessage) -> None:
@@ -138,30 +165,4 @@ class ChatHistoryGateway(ABC):
     @abstractmethod
     async def get_recent_history(self, chat_id: int, limit: int = 10) -> List[ChatMessage]:
         """Recupera los últimos N mensajes de un chat."""
-        pass
-
-class LoggerPort(ABC):
-    @abstractmethod
-    def info(self, msg: str) -> None:
-        """Loguea un mensaje informativo."""
-        pass
-
-    @abstractmethod
-    def error(self, msg: str) -> None:
-        """Loguea un mensaje de error."""
-        pass
-
-    @abstractmethod
-    def debug(self, msg: str) -> None:
-        """Loguea un mensaje de depuración."""
-        pass
-
-    @abstractmethod
-    def warning(self, msg: str) -> None:
-        """Loguea una advertencia."""
-        pass
-
-    @abstractmethod
-    def critical(self, msg: str) -> None:
-        """Loguea un fallo crítico del sistema."""
         pass

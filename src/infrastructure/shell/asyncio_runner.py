@@ -40,8 +40,6 @@ class AsyncioShellRunner(ShellGateway):
                 if decoded_line:
                     if active_logger:
                         active_logger.debug(f"{prefix} {decoded_line}")
-                    else:
-                        print(f"  {prefix} {decoded_line}")
                     collection.append(decoded_line)
 
         try:

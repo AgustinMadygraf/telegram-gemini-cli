@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 from src.use_cases.process_message import ProcessMessageUseCase
 from src.entities.chat import ChatMessage
 from src.entities.ai import AIResponse

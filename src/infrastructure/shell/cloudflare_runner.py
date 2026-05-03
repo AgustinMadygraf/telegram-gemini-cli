@@ -7,12 +7,13 @@ import time
 import os
 import signal
 from typing import Optional
-from src.use_cases.ports.interfaces import TunnelGateway
+from src.use_cases.ports.interfaces import TunnelGateway, LoggerPort
 
 class CloudflareTunnelRunner(TunnelGateway):
-    def __init__(self, tunnel_name: str, local_url: str):
+    def __init__(self, tunnel_name: str, local_url: str, logger: LoggerPort):
         self.tunnel_name = tunnel_name
         self.local_url = local_url
+        self.logger = logger
         self.process: Optional[subprocess.Popen] = None
 
     async def validate_tunnel(self, url: Optional[str] = None) -> bool:
@@ -43,7 +44,7 @@ class CloudflareTunnelRunner(TunnelGateway):
         if self.process and self.process.poll() is None:
             return # Ya está corriendo
 
-        print(f"🚀 Iniciando túnel Cloudflare: {self.tunnel_name} -> {self.local_url}")
+        self.logger.info(f"🚀 Iniciando túnel Cloudflare: {self.tunnel_name} -> {self.local_url}")
         
         # Comando para correr el túnel por nombre (usando el cert.pem local)
         cmd = [
@@ -71,7 +72,7 @@ class CloudflareTunnelRunner(TunnelGateway):
     def stop_tunnel(self) -> None:
         """Detiene el proceso del túnel de forma segura."""
         if self.process and self.process.poll() is None:
-            print(f"🛑 Deteniendo túnel Cloudflare ({self.tunnel_name})...")
+            self.logger.info(f"🛑 Deteniendo túnel Cloudflare ({self.tunnel_name})...")
             try:
                 os.killpg(os.getpgid(self.process.pid), signal.SIGTERM)
                 self.process.wait(timeout=5)
@@ -79,4 +80,4 @@ class CloudflareTunnelRunner(TunnelGateway):
                 if self.process:
                     self.process.kill()
             self.process = None
-            print("✅ Túnel detenido.")
+            self.logger.info("✅ Túnel detenido.")

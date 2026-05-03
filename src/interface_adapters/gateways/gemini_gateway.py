@@ -105,7 +105,7 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
         """
         # 1. Validar existencia del binario
         if not self.fs.exists(self.binary_path):
-            print(f"❌ Binario de Gemini no encontrado en: {self.binary_path}")
+            self.logger.error(f"❌ Binario de Gemini no encontrado en: {self.binary_path}")
             return False
 
         # 2. Validar dependencias críticas (ripgrep)

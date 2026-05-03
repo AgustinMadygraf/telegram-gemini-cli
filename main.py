@@ -6,14 +6,13 @@ import uvicorn
 import sys
 import os
 from src.infrastructure.setting.config import settings
-from src.infrastructure.setting.logger import setup_logger
+from src.infrastructure.setting.logger import setup_logger, StandardLoggerAdapter
 from src.interface_adapters.gateways.gemini_gateway import GeminiCLIAdapter
 from src.interface_adapters.gateways.telegram_gateway import TelegramAdapter
 from src.interface_adapters.controllers.telegram_controller import TelegramController
 from src.interface_adapters.presenters.telegram_presenter import TelegramPresenter
 from src.interface_adapters.gateways.mcp_validator_adapter import MCPValidatorAdapter
 from src.infrastructure.fastapi.app import create_app
-from src.infrastructure.setting.logger import setup_logger, StandardLoggerAdapter
 from src.infrastructure.shell.asyncio_runner import AsyncioShellRunner
 from src.infrastructure.shell.local_filesystem import LocalFileSystem
 from src.infrastructure.shell.port_guard import PortGuard
@@ -24,24 +23,24 @@ from contextlib import asynccontextmanager
 from src.use_cases.process_message import ProcessMessageUseCase
 from src.use_cases.system_validator import SystemValidatorService
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # 1. Startup
-    await startup_check()
-    yield
-    # 2. Shutdown
-    print("\n🛑 Apagando sistema de forma segura...")
-    tunnel_runner.stop_tunnel()
-
 # 0. Configurar Observabilidad Global
 setup_logger()
 system_logger = StandardLoggerAdapter("system")
 shell_logger = StandardLoggerAdapter("infrastructure.shell")
 ai_logger = StandardLoggerAdapter("interface.gemini")
 telegram_logger = StandardLoggerAdapter("interface.telegram")
+tunnel_logger = StandardLoggerAdapter("infrastructure.tunnel")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # 1. Startup
+    await startup_check()
+    yield
+    # 2. Shutdown
+    system_logger.info("🛑 Apagando sistema de forma segura...")
+    tunnel_runner.stop_tunnel()
 
 from src.use_cases.services.output_sanitizer import OutputSanitizerService
-
 from src.infrastructure.sqlite3.sqlite_history import SQLiteHistoryAdapter
 
 # 1. Instanciar Infraestructura de Bajo Nivel (OS)
@@ -54,7 +53,6 @@ history_adapter = SQLiteHistoryAdapter(
 )
 
 # 2. Instanciar Adaptadores de Infraestructura (Gateways)
-# ... (gemini_gateway instanciado antes)
 gemini_gateway = GeminiCLIAdapter(
     shell=shell_runner, 
     fs=file_system,
@@ -75,7 +73,8 @@ telegram_gateway = TelegramAdapter(
 
 tunnel_runner = CloudflareTunnelRunner(
     tunnel_name="gemini-bridge", 
-    local_url="http://localhost:8000"
+    local_url="http://localhost:8000",
+    logger=tunnel_logger
 )
 mcp_validator = MCPValidatorAdapter(fs=file_system)
 
@@ -136,7 +135,7 @@ if __name__ == "__main__":
     
     try:
         # 0. Limpiar puerto si es necesario
-        PortGuard(port=8000).clean_port()
+        PortGuard(port=8000, logger=system_logger).clean_port()
 
         # 1. Iniciar Túnel de Red
         tunnel_runner.start_tunnel()
@@ -146,4 +145,4 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         pass
     finally:
-        print("👋 ¡Hasta luego!")
+        system_logger.info("👋 ¡Hasta luego!")

@@ -38,7 +38,7 @@ async def test_interfaces_methods_coverage():
         def stop_tunnel(self): super().stop_tunnel()
 
     class DummyShell(interfaces.ShellGateway):
-        async def execute(self, a, e=None, c=None, t=30.0): await super().execute(a, e, c, t)
+        async def execute(self, a, e=None, c=None, t=30.0, logger=None): await super().execute(a, e, c, t, logger)
 
     class DummyFS(interfaces.FileSystemGateway):
         def exists(self, p): super().exists(p)
@@ -113,7 +113,7 @@ async def test_interfaces_methods_coverage():
 
     # History
     hist = DummyHistory()
-    await hist.save_message(ChatMessage(chat_id=1, role="user", content="hi"))
+    await hist.save_message(ChatMessage(chat_id=1, user_id=1, role="user", text="hi"))
     await hist.get_recent_history(1)
 
     # Logger
