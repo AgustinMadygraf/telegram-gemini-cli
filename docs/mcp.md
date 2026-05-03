@@ -25,5 +25,16 @@ El sistema utiliza dos patrones de transporte para comunicarse con servidores MC
 2.  **Ofuscación de Credenciales**: Siempre que sea posible, preferir SSE para evitar que el modelo de IA pueda "ver" variables de entorno sensibles mediante comandos de sistema.
 3.  **Configuración**: Las URLs de los servidores SSE se definen en el archivo de configuración del CLI, manteniendo el desacoplamiento total.
 
+## 🔄 Ciclo de Vida y Verificación
+
+Para garantizar la estabilidad operativa (Observabilidad), el sistema implementa una fase de validación obligatoria al arranque:
+
+1.  **Descubrimiento**: El `SystemValidatorService` lee la configuración de servidores MCP activos.
+2.  **Verificación de Salud (Health Check)**:
+    *   **STDIO**: Se comprueba la existencia física de los archivos ejecutables o scripts definidos.
+    *   **SSE/HTTP**: Se realiza un "ping" de red al endpoint para confirmar disponibilidad.
+3.  **Falla Visible**: Si un servidor no está disponible, el sistema genera un **Reporte de Acción**:
+    *   En lugar de una instalación automática (que podría comprometer la estabilidad), el bot imprime en consola la instrucción exacta para corregir el fallo (ej: `npm install` o verificar URL).
+
 ---
 *Este documento es la única fuente de verdad para la estrategia MCP del proyecto.*

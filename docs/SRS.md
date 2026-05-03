@@ -29,3 +29,4 @@ El sistema valida secuencialmente antes del arranque:
 2. **Sistema**: Disponibilidad de binarios y permisos de archivos vía `FileSystemGateway`.
 3. **Túnel**: Verificación de estado del túnel de Cloudflare.
 4. **Red**: Sincronización automática de URL de Webhook en Telegram.
+5. **Ecosistema MCP**: Verificación de disponibilidad de servidores STDIO y conectividad de servidores SSE antes de aceptar mensajes.
