@@ -3,7 +3,6 @@ Path: main.py
 """
 
 import uvicorn
-import asyncio
 import sys
 from src.infrastructure.setting.config import settings
 from src.infrastructure.setting.logger import setup_logger
@@ -47,7 +46,8 @@ gemini_gateway = GeminiCLIAdapter(
     auth_method=settings.GEMINI_AUTH_METHOD,
     api_key=settings.GEMINI_API_KEY,
     vertex_project=settings.VERTEX_PROJECT_ID,
-    vertex_location=settings.VERTEX_LOCATION
+    vertex_location=settings.VERTEX_LOCATION,
+    workspace_path=settings.GEMINI_WORKSPACE
 )
 telegram_logger = StandardLoggerAdapter("telegram_gateway")
 telegram_gateway = TelegramAdapter(

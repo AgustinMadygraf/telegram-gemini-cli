@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     GEMINI_BINARY_PATH: str = "/usr/local/bin/gemini"
     GEMINI_AUTH_METHOD: str = "api_key"
     GEMINI_API_KEY: Optional[str] = None
+    GEMINI_WORKSPACE: Optional[str] = None
     
     # Configuración Vertex AI
     VERTEX_PROJECT_ID: Optional[str] = None

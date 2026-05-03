@@ -21,7 +21,8 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
         auth_method: str = "api_key",
         api_key: Optional[str] = None,
         vertex_project: Optional[str] = None,
-        vertex_location: str = "us-central1"
+        vertex_location: str = "us-central1",
+        workspace_path: Optional[str] = None
     ):
         self.shell = shell
         self.fs = fs
@@ -30,6 +31,7 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
         self.api_key = api_key
         self.vertex_project = vertex_project
         self.vertex_location = vertex_location
+        self.workspace_path = workspace_path
         # Centralizamos en la nueva carpeta storage
         self.base_session_path = os.path.abspath("storage/sessions")
         self.fs.ensure_dir(self.base_session_path)
@@ -97,7 +99,7 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
                 "--output-format", "text"
             ]
             
-            return_code, stdout, stderr = await self.shell.execute(args, env=env)
+            return_code, stdout, stderr = await self.shell.execute(args, env=env, cwd=self.workspace_path)
             
             # Si el código es 0, la autenticación y el binario están OK
             return return_code == 0
@@ -120,7 +122,7 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
                 "--approval-mode", "auto_edit"
             ]
             
-            return_code, stdout, stderr = await self.shell.execute(args, env=env)
+            return_code, stdout, stderr = await self.shell.execute(args, env=env, cwd=self.workspace_path)
 
             if return_code == 0:
                 return AIResponse(text=stdout, success=True)
@@ -128,7 +130,7 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
                 # Si falló por --resume (ej. primera vez), reintentamos sin él
                 if "--resume" in stderr or "no session" in stderr.lower():
                     args.remove("--resume")
-                    return_code, stdout, stderr = await self.shell.execute(args, env=env)
+                    return_code, stdout, stderr = await self.shell.execute(args, env=env, cwd=self.workspace_path)
                     if return_code == 0:
                         return AIResponse(text=stdout, success=True)
 
@@ -145,7 +147,7 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
         session_path = os.path.join(self.base_session_path, session_id)
         try:
             # Usamos el shell para borrar el directorio de forma recursiva
-            await self.shell.execute(["rm", "-rf", session_path])
+            await self.shell.execute(["rm", "-rf", session_path], cwd=self.workspace_path)
             return True
         except Exception:
             return False
