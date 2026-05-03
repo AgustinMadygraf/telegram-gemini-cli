@@ -25,7 +25,7 @@ class AsyncioShellRunner(ShellGateway):
         text = text.replace('\r', ' ')
         return text.strip()
 
-    async def execute(self, args: List[str], env: Optional[dict] = None, cwd: Optional[str] = None, timeout: float = 30.0, logger: Optional[LoggerPort] = None) -> Tuple[int, str, str]:
+    async def execute(self, args: List[str], env: Optional[dict] = None, cwd: Optional[str] = None, timeout: float = 30.0, logger: Optional[LoggerPort] = None, line_filter: Optional[List[str]] = None) -> Tuple[int, str, str]:
         """Ejecución con streaming en tiempo real para observabilidad."""
         full_env = os.environ.copy()
         if env:
@@ -33,6 +33,9 @@ class AsyncioShellRunner(ShellGateway):
 
         # Usamos el logger pasado o el de la instancia
         active_logger = logger or self.logger
+        
+        # Compilar patrones de filtrado si se proporcionan
+        compiled_filters = [re.compile(p, re.IGNORECASE) for p in (line_filter or [])]
 
         process = await asyncio.create_subprocess_exec(
             *args,
@@ -57,7 +60,10 @@ class AsyncioShellRunner(ShellGateway):
                 clean_line = self._sanitize_line(decoded_line)
                 
                 if clean_line:
-                    if active_logger:
+                    # Aplicar filtrado de logs para evitar ruido en consola
+                    should_log = not any(p.search(clean_line) for p in compiled_filters)
+                    
+                    if active_logger and should_log:
                         active_logger.debug(f"{prefix} {clean_line}")
                     # Guardamos la versión sin saltos de línea pero con contenido útil
                     collection.append(clean_line)

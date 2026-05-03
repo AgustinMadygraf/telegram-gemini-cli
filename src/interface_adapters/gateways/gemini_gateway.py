@@ -55,7 +55,9 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
         
         env = {
             "GEMINI_CLI_HOME": session_path,
-            "PATH": os.environ.get("PATH", "")
+            "PATH": os.environ.get("PATH", ""),
+            "TERM": "xterm-256color",
+            "COLORTERM": "truecolor"
         }
         
         if self.auth_method == "api_key" and self.api_key:
@@ -140,7 +142,15 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
             
             # Para la validación, NO usamos el workspace para evitar errores si está vacío
             # Pasamos el logger para ver el progreso real en la CLI durante el arranque
-            return_code, stdout, stderr = await self.shell.execute(args, env=env, cwd=None, timeout=timeout_seconds, logger=self.logger)
+            # Usamos los patrones de ruido del sanitizador para limpiar los logs del shell
+            return_code, stdout, stderr = await self.shell.execute(
+                args, 
+                env=env, 
+                cwd=None, 
+                timeout=timeout_seconds, 
+                logger=self.logger,
+                line_filter=self.sanitizer.noise_patterns
+            )
             
             sanitized_stdout = self.sanitizer.sanitize(stdout)
             sanitized_stderr = self.sanitizer.sanitize(stderr)
@@ -183,7 +193,13 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
             if attachments:
                 args.extend(attachments)
             
-            return_code, stdout, stderr = await self.shell.execute(args, env=env, cwd=self.workspace_path, timeout=180.0)
+            return_code, stdout, stderr = await self.shell.execute(
+                args, 
+                env=env, 
+                cwd=self.workspace_path, 
+                timeout=180.0,
+                line_filter=self.sanitizer.noise_patterns
+            )
 
             # Sanitizamos ambos flujos
             sanitized_stdout = self.sanitizer.sanitize(stdout)
@@ -199,13 +215,26 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
                 if "--resume" in stderr.lower() or "no session" in stderr.lower():
                     self.logger.info(f"🔄 Reintentando sin --resume para sesión {session_id}")
                     args.remove("--resume")
-                    return_code, stdout, stderr = await self.shell.execute(args, env=env, cwd=self.workspace_path, timeout=180.0)
+                    return_code, stdout, stderr = await self.shell.execute(
+                        args, 
+                        env=env, 
+                        cwd=self.workspace_path, 
+                        timeout=180.0,
+                        line_filter=self.sanitizer.noise_patterns
+                    )
                     if return_code == 0:
                         return AIResponse(text=self.sanitizer.sanitize(stdout), success=True)
 
                 # Si falló definitivamente, devolvemos el error sanitizado
-                # Si el error sanitizado queda vacío, usamos un mensaje genérico
-                error_msg = sanitized_stderr or sanitized_stdout or "Error desconocido en Gemini CLI"
+                # Si el error sanitizado queda vacío (por exceso de filtrado), usamos el original o un genérico
+                error_msg = sanitized_stderr or sanitized_stdout
+                if not error_msg:
+                    # Si no hay nada tras sanitizar, pero hubo error, extraemos una pista del original
+                    if "status: 500" in stderr or "status: 500" in stdout:
+                        error_msg = "Error interno del servidor Gemini (500)"
+                    else:
+                        error_msg = f"Error de ejecución Gemini (Código {return_code})"
+                
                 return AIResponse(text="", success=False, error_message=error_msg)
         except Exception as e:
             return AIResponse(text="", success=False, error_message=str(e))

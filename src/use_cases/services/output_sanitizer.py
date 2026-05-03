@@ -32,6 +32,10 @@ class OutputSanitizerService:
             r"at object\.",
             r"at async",
             r"at node:internal",
+            r"at StreamableHTTPClientTransport",
+            r"at Gaxios\.",
+            r"at retryWithBackoff",
+            r"at GeminiChat\.",
             r"\(node:internal/.*\)",
             r"node_modules",
             r"ide-connection-utils",
@@ -46,6 +50,14 @@ class OutputSanitizerService:
             r"path not in workspace",
             r"resolves outside the allowed workspace",
             r"file not found\.",
+            r"GaxiosError:",
+            r"backendError",
+            r"status: \d{3}",
+            r"statusText:",
+            r"responseURL:",
+            r"server: 'ESF'",
+            r"server-timing:",
+            r"x-goog-api-client:",
             r"^\s*at\s+.*$" # Captura cualquier línea que parezca un stack trace (ej: "  at func (file:line)")
         ]
         
