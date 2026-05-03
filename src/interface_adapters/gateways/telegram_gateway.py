@@ -4,6 +4,7 @@ Path: src/interface_adapters/gateways/telegram_gateway.py
 
 from telegram import Bot
 from telegram.error import TelegramError
+from telegram.request import HTTPXRequest
 from src.use_cases.ports.interfaces import (
     MessageGateway, 
     FileGateway, 
@@ -18,7 +19,15 @@ import httpx
 
 class TelegramAdapter(MessageGateway, FileGateway, WebAdminGateway, CredentialValidatorGateway):
     def __init__(self, token: str, logger: LoggerPort):
-        self.bot = Bot(token=token)
+        # Configuramos un pool de conexiones más robusto para evitar "Pool timeout"
+        request = HTTPXRequest(
+            connection_pool_size=20,
+            read_timeout=30,
+            write_timeout=30,
+            connect_timeout=30,
+            pool_timeout=30
+        )
+        self.bot = Bot(token=token, request=request)
         self.logger = logger
 
     async def validate(self) -> bool:
