@@ -24,10 +24,17 @@ Para garantizar que el bot no se quede congelado si un proceso externo (como el 
 ## 📂 Sistema de Almacenamiento (`storage/`)
 
 El directorio `storage/` es el único lugar donde el bot escribe datos en disco:
-*   `storage/sessions/`: Subdirectorios por `chat_id` que contienen las bases de datos de Gemini CLI y sus contextos.
+*   `storage/sessions/`: Subdirectorios por `chat_id` que contienen las bases de datos de Gemini CLI. El sistema hereda automáticamente las credenciales de `~/.gemini` en cada sesión para garantizar aislamiento total entre usuarios.
 *   `storage/workspaces/`: Directorios de trabajo donde Gemini lee/edita archivos. Configurable mediante `GEMINI_WORKSPACE`.
 *   `storage/logs/`: Registros detallados del túnel de Cloudflare (`tunnel.log`) y de la aplicación.
 *   `storage/temp/`: Archivos efímeros generados durante el procesamiento.
+
+## 🔒 Estrategia de Autenticación (Google Auth)
+
+Para usuarios que utilizan `GOOGLE_AUTH`, el bot implementa una **Herencia Dinámica de Credenciales**:
+1.  **Sincronización**: En cada interacción, el bot refresca la configuración de la sesión desde `~/.gemini`.
+2.  **Robustez**: Se realiza una limpieza previa del destino (`shutil.rmtree`) para evitar archivos corruptos o sesiones bloqueadas.
+3.  **Aislamiento**: Cada `chat_id` de Telegram opera con su propio entorno `GEMINI_CLI_HOME` independiente.
 
 **Nota**: El archivo `.gitignore` está configurado para excluir esta carpeta, asegurando que los datos sensibles de los chats no se suban al repositorio.
 
@@ -49,8 +56,11 @@ Para garantizar que el bot nunca falle al enviar una respuesta (problema común 
 *   **Librería `markdown`**: Convierte el formato de Gemini a HTML estándar.
 *   **Whitelist Filtering**: Se eliminan etiquetas no soportadas por Telegram, manteniendo solo negritas, cursivas y bloques de código.
 *   **Sanitización**: Se escapan automáticamente los caracteres reservados de HTML (`<`, `>`, `&`).
-*   **Observabilidad de Fallos**: Ante errores `400 Bad Request` o fallos de la IA, el sistema loguea el payload íntegro.
 *   **Fragmentación de Mensajes**: Si una respuesta o un error exceden los 4096 caracteres de Telegram, el sistema los divide automáticamente en múltiples mensajes para evitar el error `Message is too long`.
+*   **CLI Observabilidad**:
+    *   `📥 [IN]`: Indica un mensaje entrante de Telegram (truncado a 60 chars).
+    *   `📤 [OUT]`: Indica una respuesta exitosa de Gemini.
+    *   `⚠️ [ERR]`: Indica un fallo en el procesamiento de la IA.
 
 ---
 

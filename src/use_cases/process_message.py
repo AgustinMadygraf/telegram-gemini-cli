@@ -59,7 +59,7 @@ class ProcessMessageUseCase:
         await self.messenger.set_typing(message.chat_id)
         
         # LOG CLI: Mensaje de entrada
-        in_preview = (message.text[:60] + '...') if len(message.text) > 60 else message.text
+        in_preview = message.text[:60] if len(message.text) > 60 else message.text
         print(f"📥 [IN] {message.user_id}: \"{in_preview}\"")
 
         # 3. Consultar a la IA
@@ -67,7 +67,7 @@ class ProcessMessageUseCase:
         
         # LOG CLI: Mensaje de salida (si fue exitoso)
         if response.success:
-            out_preview = (response.text[:60] + '...') if len(response.text) > 60 else response.text
+            out_preview = response.text[:60] if len(response.text) > 60 else response.text
             print(f"📤 [OUT] Gemini: \"{out_preview}\"")
         else:
             print(f"⚠️ [ERR] Gemini falló: {response.error_message[:60]}")

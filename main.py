@@ -101,7 +101,7 @@ app = create_app(
 async def startup_check():
     """Delegación del Deep Health Check al servicio de validación."""
     # Imprimimos inicio inmediato
-    print("🔍 Iniciando Deep Health Check...")
+    print("🔍 Iniciando Deep Health Check")
     
     # Pasamos el reporte pero el validador ahora será más ruidoso
     report = await validator_service.validate_all()

@@ -24,7 +24,7 @@ class SystemValidatorService:
     async def validate_all(self) -> ValidationReport:
         """Valida credenciales, red y túneles devolviendo un reporte detallado."""
         report = ValidationReport()
-        self._report_info(report, "Iniciando validación de sistema (Deep Health Check)...")
+        self._report_info(report, "Iniciando validación de sistema (Deep Health Check)")
 
         # 0. Reportar Estrategia de IA
         from src.interface_adapters.gateways.gemini_gateway import GeminiCLIAdapter
@@ -71,7 +71,7 @@ class SystemValidatorService:
 
     async def _validate_network(self, report: ValidationReport):
         """Valida y sincroniza la salud del webhook en Telegram."""
-        self._report_info(report, "Verificando salud del Webhook en Telegram...")
+        self._report_info(report, "Verificando salud del Webhook en Telegram")
         try:
             status = await self.messenger.get_webhook_status()
             

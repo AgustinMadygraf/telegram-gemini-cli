@@ -78,7 +78,7 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
                 if os.path.exists(target_config_dir):
                     shutil.rmtree(target_config_dir)
                 
-                print(f"🔑 Sincronizando credenciales desde {global_config_dir}...")
+                print(f"🔑 Sincronizando credenciales desde {global_config_dir}")
                 # Copiamos la carpeta entera para asegurar OAuth y settings
                 shutil.copytree(
                     global_config_dir, 
@@ -110,7 +110,7 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
                 "--output-format", "text"
             ]
             
-            print(f"⌛ Validando credenciales de Gemini (Deep Auth Check - Máx 60s)...")
+            print(f"⌛ Validando credenciales de Gemini (Deep Auth Check - Máx 60s)")
             # Para la validación, NO usamos el workspace para evitar errores si está vacío
             # Aumentamos a 60s para asegurar que el CLI tenga tiempo de inicializar la sesión temporal
             return_code, stdout, stderr = await self.shell.execute(args, env=env, cwd=None, timeout=60.0)
