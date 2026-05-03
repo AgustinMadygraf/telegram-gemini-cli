@@ -19,8 +19,17 @@ class TelegramPresenter:
         3. Fragmenta si es necesario.
         """
         if not response.success:
-            error_text = response.error_message.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-            error_msg = f"❌ <b>Error de IA</b>:\n<i>{error_text}</i>"
+            # Escapamos caracteres HTML
+            safe_error = response.error_message.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            
+            # Si el error es masivo (ej. stack trace), le damos un formato más compacto
+            if len(safe_error) > 1000:
+                self.logger.warning("Error de IA detectado como 'muy largo', procediendo a fragmentar.")
+                # Mostramos un encabezado y fragmentamos el resto
+                header = "❌ <b>Fallo técnico en Gemini</b>\n<i>El CLI devolvió un error extenso:</i>"
+                return [header] + self._chunk_text(f"<code>{safe_error}</code>")
+            
+            error_msg = f"❌ <b>Error de IA</b>:\n<i>{safe_error}</i>"
             return [error_msg]
 
         # 1. Convertir Markdown a HTML
