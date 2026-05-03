@@ -70,7 +70,8 @@ class ProcessMessageUseCase:
             out_preview = response.text[:60] if len(response.text) > 60 else response.text
             print(f"📤 [OUT] Gemini: \"{out_preview}\"")
         else:
-            print(f"⚠️ [ERR] Gemini falló: {response.error_message[:60]}")
+            # En caso de error, mostramos el mensaje COMPLETO en la consola para diagnóstico
+            print(f"⚠️ [ERR] Gemini falló:\n--- START ERROR ---\n{response.error_message}\n--- END ERROR ---")
 
         # 3. Formatear respuesta vía Presenter (Capa de Presentación)
         # El presenter ahora convierte Markdown a HTML robusto.
