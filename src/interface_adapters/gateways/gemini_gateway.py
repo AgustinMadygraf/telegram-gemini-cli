@@ -106,6 +106,7 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
             # Ejecutamos un ping mínimo
             args = [
                 self.binary_path,
+                "--sandbox",
                 "-p", "hi",
                 "--output-format", "text"
             ]
@@ -133,6 +134,7 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
             # Si es la primera vez, el CLI iniciará una nueva.
             args = [
                 self.binary_path,
+                "--sandbox",
                 "-p", prompt,
                 "--resume",
                 "--output-format", "text",

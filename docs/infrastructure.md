@@ -29,12 +29,19 @@ El directorio `storage/` es el único lugar donde el bot escribe datos en disco:
 *   `storage/logs/`: Registros detallados del túnel de Cloudflare (`tunnel.log`) y de la aplicación.
 *   `storage/temp/`: Archivos efímeros generados durante el procesamiento.
 
-## 🔒 Estrategia de Autenticación (Google Auth)
+## 🔒 Estrategia de Autenticación y Seguridad
 
+### Herencia Dinámica de Credenciales (Google Auth)
 Para usuarios que utilizan `GOOGLE_AUTH`, el bot implementa una **Herencia Dinámica de Credenciales**:
 1.  **Sincronización**: En cada interacción, el bot refresca la configuración de la sesión desde `~/.gemini`.
 2.  **Robustez**: Se realiza una limpieza previa del destino (`shutil.rmtree`) para evitar archivos corruptos o sesiones bloqueadas.
-3.  **Aislamiento**: Cada `chat_id` de Telegram opera con su propio entorno `GEMINI_CLI_HOME` independiente.
+3.  **Aislamiento de Sesión**: Cada `chat_id` de Telegram opera con su propio entorno `GEMINI_CLI_HOME` independiente.
+
+### Aislamiento de Ejecución (Sandbox)
+El sistema utiliza el modo **Sandbox** nativo de Gemini CLI para proteger el código fuente:
+*   **Restricción de Directorio**: La IA solo puede ver y operar dentro de `storage/workspaces/default`.
+*   **Bloqueo de Escapes**: Aunque la IA intente usar rutas relativas (`../../`), el Sandbox impide el acceso a archivos fuera del workspace.
+*   **Dependencia**: Este modo utiliza aislamiento a nivel de proceso de Linux (Namespaces) y, en algunos entornos, puede requerir Docker activo para máxima compatibilidad.
 
 **Nota**: El archivo `.gitignore` está configurado para excluir esta carpeta, asegurando que los datos sensibles de los chats no se suban al repositorio.
 
