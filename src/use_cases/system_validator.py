@@ -89,13 +89,17 @@ class SystemValidatorService:
                         secret_token=self.secret_token
                     )
                     self._report_info(report, "Webhook sincronizado con éxito.")
+                    # Si acabamos de sincronizar con éxito, ignoramos el error anterior que venía en 'status'
+                    # ya que era del estado previo a la sincronización.
+                    return 
                 except Exception as e:
                     self._report_error(report, f"Telegram rechazó el Webhook: {str(e)}")
             else:
                 self._report_info(report, f"Webhook ya está sincronizado en: {status.url}")
             
+            # Si llegamos aquí y hay un error, es porque ya estaba sincronizado pero sigue fallando
             if status.last_error_message:
-                self._report_error(report, f"Telegram reporta fallo en el Webhook: {status.last_error_message}")
+                self._report_error(report, f"Telegram reporta fallo persistente en el Webhook: {status.last_error_message}")
                 self._report_info(report, "💡 Sugerencia: Verifique que el túnel esté activo y que el servidor acepte conexiones.")
                 
         except Exception as e:

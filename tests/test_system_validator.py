@@ -103,7 +103,7 @@ async def test_validate_network_with_warning(validator, mock_messenger):
         ip_address=None
     )
     report = await validator.validate_all()
-    assert any("Telegram reporta fallo" in msg for msg in report.error_messages)
+    assert any("Telegram reporta fallo persistente" in msg for msg in report.error_messages)
 
 @pytest.mark.asyncio
 async def test_validate_without_messenger(mock_tunnel, mock_ai, mock_mcp):

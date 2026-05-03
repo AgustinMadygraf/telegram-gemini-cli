@@ -112,7 +112,7 @@ async def test_validate_infra_error_in_output(mock_shell, mock_fs):
     adapter = GeminiCLIAdapter(mock_shell, mock_fs)
     mock_shell.execute.side_effect = [
         (0, "/usr/bin/rg", ""),
-        (0, "error: some infra issue", "") # return code 0 but error in text
+        (0, "fatal error: some infra issue", "") # Usamos fatal error para disparar el fallo
     ]
     assert await adapter.validate() is False
 

@@ -107,7 +107,14 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
         
         # 2. Validar autenticación (Deep Auth Check)
         try:
-            # Usamos una sesión especial de validación de sistema
+            # 2.1 Verificar existencia física de credenciales si usamos google_auth
+            if self.auth_method == "google_auth":
+                global_config_dir = os.path.expanduser("~/.gemini")
+                if not self.fs.exists(global_config_dir):
+                    print(f"❌ Error: No se encontraron credenciales en {global_config_dir}. Ejecute 'gemini --login' primero.")
+                    return False
+
+            # 2.2 Usamos una sesión especial de validación de sistema
             env = self._get_env_for_session("system_check")
             
             # Ejecutamos un ping mínimo
@@ -115,22 +122,26 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
                 self.binary_path,
                 "--sandbox",
                 "-p", "hi",
-                "--output-format", "text"
+                "--output-format", "text",
+                "--approval-mode", "auto_edit"
             ]
             
-            print(f"⌛ Validando credenciales de Gemini (Deep Auth Check - Máx 60s)")
+            timeout_seconds = 90.0
+            print(f"⌛ Validando credenciales de Gemini (Deep Auth Check - Máx {timeout_seconds}s)")
+            
             # Para la validación, NO usamos el workspace para evitar errores si está vacío
-            # Aumentamos a 60s para asegurar que el CLI tenga tiempo de inicializar la sesión temporal
-            return_code, stdout, stderr = await self.shell.execute(args, env=env, cwd=None, timeout=60.0)
+            return_code, stdout, stderr = await self.shell.execute(args, env=env, cwd=None, timeout=timeout_seconds)
             
             if return_code != 0:
                 print(f"⚠️  Error en validación Gemini CLI (Código {return_code}): {stderr}")
                 return False
             
             # 3. Validar sanidad de la salida (infraestructura)
-            infra_errors = ["ripgrep is not", "command not found", "error"]
-            if any(err in stderr.lower() or err in stdout.lower() for err in infra_errors):
-                print(f"❌ Error de infraestructura detectado en la salida de Gemini: {stdout} {stderr}")
+            # Solo fallamos si hay errores críticos de ejecución o falta de comandos base.
+            # Ignoramos avisos de "Ripgrep fallback" o fallos de conexión al IDE (VS Code).
+            critical_errors = ["command not found", "fatal error", "invalid api key", "authentication failed"]
+            if any(err in stderr.lower() or err in stdout.lower() for err in critical_errors):
+                print(f"❌ Error crítico detectado en la salida de Gemini: {stdout} {stderr}")
                 return False
 
             return True
