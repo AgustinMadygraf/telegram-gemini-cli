@@ -42,7 +42,7 @@ telegram_logger = StandardLoggerAdapter("interface.telegram")
 
 from src.use_cases.services.output_sanitizer import OutputSanitizerService
 
-from src.infrastructure.database.sqlite_history import SQLiteHistoryAdapter
+from src.infrastructure.sqlite3.sqlite_history import SQLiteHistoryAdapter
 
 # 1. Instanciar Infraestructura de Bajo Nivel (OS)
 shell_runner = AsyncioShellRunner(logger=shell_logger)
