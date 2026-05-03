@@ -20,7 +20,13 @@ Bridge de producción asíncrono que vincula Telegram con el ecosistema **Gemini
 ### 1. Gemini CLI
 [Instrucciones oficiales aquí](https://github.com/google/gemini-cli).
 
-### 2. Cloudflared (Túnel HTTPS)
+### 2. Ripgrep (rg)
+Gemini CLI requiere `ripgrep` para realizar búsquedas en el sistema de archivos.
+```bash
+sudo apt-get install ripgrep
+```
+
+### 3. Cloudflared (Túnel HTTPS)
 ```bash
 sudo apt-get install cloudflared
 ```

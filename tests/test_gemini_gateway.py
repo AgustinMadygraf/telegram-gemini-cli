@@ -39,8 +39,13 @@ async def test_validate_binary_not_found(mock_shell, mock_fs):
 @pytest.mark.asyncio
 async def test_validate_exception(mock_shell, mock_fs):
     adapter = GeminiCLIAdapter(mock_shell, mock_fs)
-    mock_shell.execute.side_effect = Exception("Runtime error")
-    assert await adapter.validate() is False # Line 104-105 coverage
+    # mock_shell.execute.side_effect = Exception("Runtime error")
+    # Ahora que hay varias llamadas, usamos side_effect con lista o controlamos cuál falla
+    mock_shell.execute.side_effect = [
+        (0, "/usr/bin/rg", ""), # which rg ok
+        Exception("Runtime error") # ping gemini falla
+    ]
+    assert await adapter.validate() is False
 
 @pytest.mark.asyncio
 async def test_ask_unexpected_exception(adapter, mock_shell):
@@ -87,8 +92,29 @@ def test_vertex_ai_auth(mock_shell, mock_fs):
 @pytest.mark.asyncio
 async def test_validate_success(mock_shell, mock_fs):
     adapter = GeminiCLIAdapter(mock_shell, mock_fs)
-    mock_shell.execute.return_value = (0, "hi", "")
+    # mock_shell.execute se llamará para:
+    # 1. which rg -> (0, "/usr/bin/rg", "")
+    # 2. ping gemini -> (0, "hi", "")
+    mock_shell.execute.side_effect = [
+        (0, "/usr/bin/rg", ""),
+        (0, "hi", "")
+    ]
     assert await adapter.validate() is True
+
+@pytest.mark.asyncio
+async def test_validate_ripgrep_missing(mock_shell, mock_fs):
+    adapter = GeminiCLIAdapter(mock_shell, mock_fs)
+    mock_shell.execute.return_value = (1, "", "") # which rg falla
+    assert await adapter.validate() is False
+
+@pytest.mark.asyncio
+async def test_validate_infra_error_in_output(mock_shell, mock_fs):
+    adapter = GeminiCLIAdapter(mock_shell, mock_fs)
+    mock_shell.execute.side_effect = [
+        (0, "/usr/bin/rg", ""),
+        (0, "error: some infra issue", "") # return code 0 but error in text
+    ]
+    assert await adapter.validate() is False
 
 @pytest.mark.asyncio
 async def test_ask_failure(adapter, mock_shell):

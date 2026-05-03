@@ -96,6 +96,13 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
         """
         # 1. Validar existencia del binario
         if not self.fs.exists(self.binary_path):
+            print(f"❌ Binario de Gemini no encontrado en: {self.binary_path}")
+            return False
+
+        # 2. Validar dependencias críticas (ripgrep)
+        rc, _, _ = await self.shell.execute(["which", "rg"])
+        if rc != 0:
+            print("❌ Dependencia faltante: 'ripgrep' (rg) es necesario para el funcionamiento de Gemini CLI.")
             return False
         
         # 2. Validar autenticación (Deep Auth Check)
@@ -118,8 +125,15 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
             
             if return_code != 0:
                 print(f"⚠️  Error en validación Gemini CLI (Código {return_code}): {stderr}")
+                return False
             
-            return return_code == 0
+            # 3. Validar sanidad de la salida (infraestructura)
+            infra_errors = ["ripgrep is not", "command not found", "error"]
+            if any(err in stderr.lower() or err in stdout.lower() for err in infra_errors):
+                print(f"❌ Error de infraestructura detectado en la salida de Gemini: {stdout} {stderr}")
+                return False
+
+            return True
         except Exception as e:
             print(f"❌ Excepción en validador Gemini: {str(e)}")
             return False

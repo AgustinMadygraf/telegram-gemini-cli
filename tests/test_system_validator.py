@@ -18,7 +18,10 @@ def mock_ai():
 
 @pytest.fixture
 def mock_messenger():
-    return AsyncMock()
+    mock = AsyncMock()
+    # Por defecto, no hay errores en el webhook para evitar fallos en tests generales
+    mock.get_webhook_status.return_value = MagicMock(last_error_message=None)
+    return mock
 
 @pytest.fixture
 def mock_mcp():
@@ -100,7 +103,7 @@ async def test_validate_network_with_warning(validator, mock_messenger):
         ip_address=None
     )
     report = await validator.validate_all()
-    assert any("Aviso de Telegram: Connection timed out" in msg for msg in report.info_messages)
+    assert any("Telegram reporta fallo" in msg for msg in report.error_messages)
 
 @pytest.mark.asyncio
 async def test_validate_without_messenger(mock_tunnel, mock_ai, mock_mcp):

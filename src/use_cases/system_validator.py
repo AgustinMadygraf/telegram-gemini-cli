@@ -95,7 +95,8 @@ class SystemValidatorService:
                 self._report_info(report, f"Webhook ya está sincronizado en: {status.url}")
             
             if status.last_error_message:
-                self._report_info(report, f"Aviso de Telegram: {status.last_error_message}")
+                self._report_error(report, f"Telegram reporta fallo en el Webhook: {status.last_error_message}")
+                self._report_info(report, "💡 Sugerencia: Verifique que el túnel esté activo y que el servidor acepte conexiones.")
                 
         except Exception as e:
             self._report_error(report, f"Fallo de conexión con Telegram: {e}")
