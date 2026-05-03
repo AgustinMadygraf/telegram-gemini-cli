@@ -102,7 +102,13 @@ class ProcessMessageUseCase:
             except Exception as e:
                 self.logger.warning(f"⚠️ No se pudo eliminar archivo temporal {path}: {e}")
         
-        # 6. Persistir respuesta de la IA
+        # 6. Persistir y Validar respuesta de la IA
+        # Si la respuesta está vacía tras la sanitización, la tratamos como error técnico
+        if response.success and not response.text.strip():
+            response.success = False
+            response.error_message = "La IA devolvió una respuesta vacía o solo ruido técnico."
+            self.logger.warning("⚠️ Respuesta de Gemini quedó vacía tras sanitización.")
+
         if response.success:
             out_preview = response.text[:60] if len(response.text) > 60 else response.text
             self.logger.info(f"📤 [OUT] Gemini: \"{out_preview}\"")
@@ -118,6 +124,8 @@ class ProcessMessageUseCase:
                 await self.history.save_message(ai_msg)
         else:
             self.logger.error(f"⚠️ [ERR] Gemini falló: {response.error_message}")
+            # Sobreescribimos el texto para el presenter si falló
+            response.text = "❌ <b>Lo siento</b>, estoy experimentando dificultades técnicas para procesar tu mensaje. Por favor, intenta de nuevo en unos momentos."
 
         # 7. Formatear respuesta vía Presenter (Capa de Presentación)
         formatted_messages = self.presenter.format_response(response)

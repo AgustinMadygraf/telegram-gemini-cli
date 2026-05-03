@@ -3,6 +3,7 @@ Path: main.py
 """
 
 import uvicorn
+import logging
 import sys
 import os
 from src.infrastructure.setting.config import settings
@@ -27,7 +28,9 @@ from src.use_cases.system_validator import SystemValidatorService
 setup_logger()
 system_logger = StandardLoggerAdapter("system")
 shell_logger = StandardLoggerAdapter("infrastructure.shell")
+shell_logger.logger.setLevel(logging.DEBUG)
 ai_logger = StandardLoggerAdapter("interface.gemini")
+ai_logger.logger.setLevel(logging.DEBUG)
 telegram_logger = StandardLoggerAdapter("interface.telegram")
 tunnel_logger = StandardLoggerAdapter("infrastructure.tunnel")
 

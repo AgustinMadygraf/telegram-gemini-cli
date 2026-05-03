@@ -32,7 +32,15 @@ class OutputSanitizerService:
             "code:",
             "syscall:",
             "address:",
-            "port:"
+            "port:",
+            "econnrefused",
+            "[cause]",
+            "[c",
+            "error: connect",
+            "typeerror: fetch failed",
+            "at object.processresponse",
+            "errno:",
+            "syscall:"
         ]
 
     def sanitize(self, text: str) -> str:
@@ -52,10 +60,14 @@ class OutputSanitizerService:
                 continue
                 
             # Regla 1: Stacktraces de Node.js / Python
-            if trimmed_line.startswith("at ") or trimmed_line.startswith("at async"):
+            if trimmed_line.startswith("at ") or trimmed_line.startswith("at async") or trimmed_line.startswith("stdout>"):
                 continue
                 
-            # Regla 2: Palabras clave de ruido
+            # Regla 2: Ruido de llaves/corchetes sueltos (típicos de volcados de error JSON)
+            if trimmed_line in ["}", "{", "],", "],", "},", "["]:
+                continue
+
+            # Regla 3: Palabras clave de ruido
             if any(kw in trimmed_line.lower() for kw in self.noise_keywords):
                 continue
                 
