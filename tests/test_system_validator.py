@@ -1,3 +1,7 @@
+"""
+Path: tests/test_system_validator.py
+"""
+
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 from src.use_cases.system_validator import SystemValidatorService
@@ -30,9 +34,14 @@ def mock_mcp():
     return mock
 
 @pytest.fixture
-def validator(mock_tunnel, mock_ai, mock_messenger, mock_mcp):
+def mock_logger():
+    return MagicMock()
+
+@pytest.fixture
+def validator(mock_tunnel, mock_ai, mock_messenger, mock_mcp, mock_logger):
     return SystemValidatorService(
         validators=[mock_ai],
+        logger=mock_logger,
         messenger=mock_messenger,
         tunnel=mock_tunnel,
         mcp_validator=mock_mcp,
@@ -108,9 +117,10 @@ async def test_validate_network_with_warning(validator, mock_messenger):
     assert any("Webhook sincronizado con éxito" in msg for msg in report.info_messages)
 
 @pytest.mark.asyncio
-async def test_validate_without_messenger(mock_tunnel, mock_ai, mock_mcp):
+async def test_validate_without_messenger(mock_tunnel, mock_ai, mock_mcp, mock_logger):
     v = SystemValidatorService(
         validators=[mock_ai],
+        logger=mock_logger,
         messenger=None,
         tunnel=mock_tunnel,
         mcp_validator=mock_mcp,

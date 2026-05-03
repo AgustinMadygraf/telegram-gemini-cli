@@ -2,7 +2,13 @@
 Path: src/use_cases/system_validator.py
 """
 
-from src.use_cases.ports.interfaces import CredentialValidatorGateway, MessengerGateway, TunnelGateway, MCPValidatorGateway
+from src.use_cases.ports.interfaces import (
+    CredentialValidatorGateway, 
+    MessengerGateway, 
+    TunnelGateway, 
+    MCPValidatorGateway,
+    LoggerPort
+)
 from src.entities.validation import ValidationReport
 from typing import List
 
@@ -10,6 +16,7 @@ class SystemValidatorService:
     def __init__(
         self, 
         validators: List[CredentialValidatorGateway],
+        logger: LoggerPort,
         messenger: MessengerGateway = None,
         tunnel: TunnelGateway = None,
         mcp_validator: MCPValidatorGateway = None,
@@ -17,6 +24,7 @@ class SystemValidatorService:
         secret_token: str = ""
     ):
         self.validators = validators
+        self.logger = logger
         self.messenger = messenger
         self.tunnel = tunnel
         self.mcp_validator = mcp_validator
@@ -66,14 +74,15 @@ class SystemValidatorService:
 
     def _report_info(self, report, msg):
         report.add_info(msg)
-        print(f"✅ {msg}")
+        self.logger.info(f"✅ {msg}")
 
     def _report_error(self, report, msg):
         report.add_error(msg)
-        # No imprimimos error aquí porque main.py lo hará al final si falla
+        self.logger.error(f"❌ {msg}")
 
     def _report_critical(self, report, msg):
         report.add_critical(msg)
+        self.logger.critical(f"🔥 {msg}")
 
     async def _validate_network(self, report: ValidationReport):
         """Valida y sincroniza la salud del webhook en Telegram."""

@@ -33,17 +33,33 @@ async def lifespan(app: FastAPI):
     print("\n🛑 Apagando sistema de forma segura...")
     tunnel_runner.stop_tunnel()
 
-# 0. Configurar Observabilidad
+# 0. Configurar Observabilidad Global
 setup_logger()
+system_logger = StandardLoggerAdapter("system")
+shell_logger = StandardLoggerAdapter("infrastructure.shell")
+ai_logger = StandardLoggerAdapter("interface.gemini")
+telegram_logger = StandardLoggerAdapter("interface.telegram")
+
+from src.use_cases.services.output_sanitizer import OutputSanitizerService
+
+from src.infrastructure.database.sqlite_history import SQLiteHistoryAdapter
 
 # 1. Instanciar Infraestructura de Bajo Nivel (OS)
-shell_runner = AsyncioShellRunner()
+shell_runner = AsyncioShellRunner(logger=shell_logger)
 file_system = LocalFileSystem()
+sanitizer = OutputSanitizerService()
+history_adapter = SQLiteHistoryAdapter(
+    db_path=settings.SQLITE_DB_PATH, 
+    logger=StandardLoggerAdapter("infrastructure.database")
+)
 
 # 2. Instanciar Adaptadores de Infraestructura (Gateways)
+# ... (gemini_gateway instanciado antes)
 gemini_gateway = GeminiCLIAdapter(
     shell=shell_runner, 
     fs=file_system,
+    logger=ai_logger,
+    sanitizer=sanitizer,
     binary_path=settings.GEMINI_BINARY_PATH,
     auth_method=settings.GEMINI_AUTH_METHOD,
     api_key=settings.GEMINI_API_KEY,
@@ -51,22 +67,22 @@ gemini_gateway = GeminiCLIAdapter(
     vertex_location=settings.VERTEX_LOCATION,
     workspace_path=settings.GEMINI_WORKSPACE
 )
-telegram_logger = StandardLoggerAdapter("telegram_gateway")
+
 telegram_gateway = TelegramAdapter(
     token=settings.TELEGRAM_BOT_TOKEN, 
     logger=telegram_logger
 )
+
 tunnel_runner = CloudflareTunnelRunner(
     tunnel_name="gemini-bridge", 
     local_url="http://localhost:8000"
 )
 mcp_validator = MCPValidatorAdapter(fs=file_system)
 
-# El túnel ahora se detiene en el lifespan
-
-# --- USE CASES ---
+# 3. Instanciar Casos de Uso y Servicios
 validator_service = SystemValidatorService(
     validators=[gemini_gateway, telegram_gateway],
+    logger=system_logger,
     messenger=telegram_gateway,
     tunnel=tunnel_runner,
     mcp_validator=mcp_validator,
@@ -74,28 +90,28 @@ validator_service = SystemValidatorService(
     secret_token=settings.WEBHOOK_SECRET_TOKEN
 )
 
-# 2. Instanciar Casos de Uso y Servicios
 markdown_converter = PythonMarkdownAdapter()
-presenter_logger = StandardLoggerAdapter("telegram_presenter")
 telegram_presenter = TelegramPresenter(
     markdown_converter=markdown_converter,
-    logger=presenter_logger
+    logger=StandardLoggerAdapter("interface.presenter")
 )
 
 process_message_use_case = ProcessMessageUseCase(
     ai_engine=gemini_gateway,
     messenger=telegram_gateway,
     presenter=telegram_presenter,
-    allowed_users=settings.ALLOWED_CHAT_IDS
+    logger=StandardLoggerAdapter("use_case.process_message"),
+    allowed_users=settings.ALLOWED_CHAT_IDS,
+    history=history_adapter
 )
 
-# 3. Instanciar Adaptadores de Interfaz (Controllers)
+# 4. Instanciar Adaptadores de Interfaz (Controllers)
 telegram_controller = TelegramController(
     use_case=process_message_use_case,
     secret_token=settings.WEBHOOK_SECRET_TOKEN
 )
 
-# 4. Crear Aplicación FastAPI
+# 5. Crear Aplicación FastAPI
 app = create_app(
     controller=telegram_controller,
     lifespan=lifespan
@@ -103,20 +119,15 @@ app = create_app(
 
 async def startup_check():
     """Delegación del Deep Health Check al servicio de validación."""
-    # Imprimimos inicio inmediato
-    print("🔍 Iniciando Deep Health Check")
+    system_logger.info("🔍 Iniciando Deep Health Check")
     
-    # Pasamos el reporte pero el validador ahora será más ruidoso
     report = await validator_service.validate_all()
     
     if not report.is_ok:
-        for msg in report.error_messages:
-            print(f"⚠️  Error: {msg}")
-        for msg in report.critical_messages:
-            print(f"❌ CRÍTICO: {msg}")
+        # El validator_service ya habrá logueado los errores a través de su logger inyectado
         sys.exit(1)
     
-    print("🚀 Sistema listo para recibir mensajes.")
+    system_logger.info("🚀 Sistema listo para recibir mensajes.")
 
 if __name__ == "__main__":
     # Doble limpieza de pantalla para un inicio impecable

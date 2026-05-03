@@ -18,12 +18,17 @@ def mock_presenter():
     mock.format_response.return_value = ["formatted message"]
     return mock
 
+@pytest.fixture
+def mock_logger():
+    return MagicMock()
+
 @pytest.mark.asyncio
-async def test_execute_success(mock_ai, mock_messenger, mock_presenter):
+async def test_execute_success(mock_ai, mock_messenger, mock_presenter, mock_logger):
     use_case = ProcessMessageUseCase(
         ai_engine=mock_ai,
         messenger=mock_messenger,
         presenter=mock_presenter,
+        logger=mock_logger,
         allowed_users=[123]
     )
     
@@ -33,7 +38,7 @@ async def test_execute_success(mock_ai, mock_messenger, mock_presenter):
     await use_case.execute(msg)
     
     mock_messenger.set_typing.assert_called_once_with(456)
-    mock_ai.ask.assert_called_once_with("hola", session_id="chat_456")
+    mock_ai.ask.assert_called_once_with("hola", session_id="chat_456", attachments=[])
     # Verificamos que se llame a send_message con los argumentos correctos (ignorando el orden)
     mock_messenger.send_message.assert_called_with(
         chat_id=456, 
@@ -47,6 +52,7 @@ async def test_execute_unauthorized(mock_ai, mock_messenger, mock_presenter):
         ai_engine=mock_ai,
         messenger=mock_messenger,
         presenter=mock_presenter,
+        logger=mock_logger,
         allowed_users=[999]
     )
     
@@ -59,11 +65,12 @@ async def test_execute_unauthorized(mock_ai, mock_messenger, mock_presenter):
     mock_messenger.send_message.assert_called_once()
 
 @pytest.mark.asyncio
-async def test_execute_reset_command(mock_ai, mock_messenger, mock_presenter):
+async def test_execute_reset_command(mock_ai, mock_messenger, mock_presenter, mock_logger):
     use_case = ProcessMessageUseCase(
         ai_engine=mock_ai,
         messenger=mock_messenger,
         presenter=mock_presenter,
+        logger=mock_logger,
         allowed_users=[123]
     )
     
@@ -76,26 +83,26 @@ async def test_execute_reset_command(mock_ai, mock_messenger, mock_presenter):
     assert "reiniciado" in mock_messenger.send_message.call_args.kwargs["text"].lower()
 
 @pytest.mark.asyncio
-async def test_validate_user_allowed(mock_ai, mock_messenger, mock_presenter):
-    use_case = ProcessMessageUseCase(mock_ai, mock_messenger, mock_presenter, allowed_users=[123])
+async def test_validate_user_allowed(mock_ai, mock_messenger, mock_presenter, mock_logger):
+    use_case = ProcessMessageUseCase(mock_ai, mock_messenger, mock_presenter, mock_logger, allowed_users=[123])
     await use_case.validate_user(user_id=123, chat_id=456)
 @pytest.mark.asyncio
-async def test_validate_user_denied(mock_ai, mock_messenger, mock_presenter):
-    use_case = ProcessMessageUseCase(mock_ai, mock_messenger, mock_presenter, allowed_users=[999])
+async def test_validate_user_denied(mock_ai, mock_messenger, mock_presenter, mock_logger):
+    use_case = ProcessMessageUseCase(mock_ai, mock_messenger, mock_presenter, mock_logger, allowed_users=[999])
     with pytest.raises(PermissionError):
         await use_case.validate_user(user_id=123, chat_id=456)
 
 @pytest.mark.asyncio
-async def test_execute_reset_failure(mock_ai, mock_messenger, mock_presenter):
-    use_case = ProcessMessageUseCase(mock_ai, mock_messenger, mock_presenter, allowed_users=[123])
+async def test_execute_reset_failure(mock_ai, mock_messenger, mock_presenter, mock_logger):
+    use_case = ProcessMessageUseCase(mock_ai, mock_messenger, mock_presenter, mock_logger, allowed_users=[123])
     msg = ChatMessage(chat_id=456, user_id=123, text="/reset")
     mock_ai.reset.return_value = False
     await use_case.execute(msg)
     assert "no se pudo reiniciar" in mock_messenger.send_message.call_args.kwargs["text"].lower()
 
 @pytest.mark.asyncio
-async def test_execute_ai_failure_logging(mock_ai, mock_messenger, mock_presenter):
-    use_case = ProcessMessageUseCase(mock_ai, mock_messenger, mock_presenter, allowed_users=[123])
+async def test_execute_ai_failure_logging(mock_ai, mock_messenger, mock_presenter, mock_logger):
+    use_case = ProcessMessageUseCase(mock_ai, mock_messenger, mock_presenter, mock_logger, allowed_users=[123])
     msg = ChatMessage(chat_id=456, user_id=123, text="long text " * 10)
     mock_ai.ask.return_value = AIResponse(text="", success=False, error_message="fatal error")
     await use_case.execute(msg)
@@ -103,8 +110,8 @@ async def test_execute_ai_failure_logging(mock_ai, mock_messenger, mock_presente
     mock_presenter.format_response.assert_called_once()
 
 @pytest.mark.asyncio
-async def test_execute_log_truncation(mock_ai, mock_messenger, mock_presenter):
-    use_case = ProcessMessageUseCase(mock_ai, mock_messenger, mock_presenter, allowed_users=[123])
+async def test_execute_log_truncation(mock_ai, mock_messenger, mock_presenter, mock_logger):
+    use_case = ProcessMessageUseCase(mock_ai, mock_messenger, mock_presenter, mock_logger, allowed_users=[123])
     long_input = "word " * 20 # 100 chars
     msg = ChatMessage(chat_id=456, user_id=123, text=long_input)
     

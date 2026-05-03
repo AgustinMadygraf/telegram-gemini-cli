@@ -5,9 +5,12 @@ Path: src/infrastructure/shell/asyncio_runner.py
 import asyncio
 import os
 from typing import List, Tuple, Optional
-from src.use_cases.ports.interfaces import ShellGateway
+from src.use_cases.ports.interfaces import ShellGateway, LoggerPort
 
 class AsyncioShellRunner(ShellGateway):
+    def __init__(self, logger: Optional[LoggerPort] = None):
+        self.logger = logger
+
     async def execute(self, args: List[str], env: Optional[dict] = None, cwd: Optional[str] = None, timeout: float = 30.0) -> Tuple[int, str, str]:
         """Ejecución con streaming en tiempo real para observabilidad."""
         full_env = os.environ.copy()
@@ -32,8 +35,11 @@ class AsyncioShellRunner(ShellGateway):
                     break
                 decoded_line = line.decode().strip()
                 if decoded_line:
-                    # Imprimimos en tiempo real para observabilidad
-                    print(f"  {prefix} {decoded_line}")
+                    # Usamos el logger si está disponible, si no, fallback a print
+                    if self.logger:
+                        self.logger.debug(f"{prefix} {decoded_line}")
+                    else:
+                        print(f"  {prefix} {decoded_line}")
                     collection.append(decoded_line)
 
         try:

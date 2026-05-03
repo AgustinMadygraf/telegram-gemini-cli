@@ -34,3 +34,6 @@ class StandardLoggerAdapter(LoggerPort):
 
     def warning(self, msg: str):
         self.logger.warning(msg)
+
+    def critical(self, msg: str):
+        self.logger.critical(msg)

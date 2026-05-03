@@ -28,3 +28,17 @@
 - [x] Verificación de binarios STDIO declarados en `settings.json`.
 - [x] Health check de endpoints SSE/HTTP.
 - [x] Generación de Reporte de Acción (Sugerencias de reparación).
+- [x] Sanitización de salida (Eliminación de ruido de infraestructura).
+
+### Fase 6: Observabilidad y Persistencia ✅
+- [x] **Refactor de Logging (SOLID)**: Sustituir `print` por un `LoggerGateway` inyectable.
+- [x] **Streaming de Shell**: Captura de logs técnicos de Gemini CLI en tiempo real.
+- [x] **Desacoplamiento de Sanitización**: Movido a un servicio de dominio independiente.
+- [x] **Persistencia SQLite**: Historial de chats auditado y metadatos.
+- [x] **Soporte Multimodal**: Procesamiento de fotos y capturas de pantalla.
+- [x] **Integridad Certificada**: 81 tests automatizados validados.
+
+## Backlog de Mejora Continua
+- [ ] Alcanzar el 100% de cobertura de tests en interfaces y puertos.
+- [ ] Implementar sistema de alertas vía Telegram ante fallos críticos de servidores MCP.
+- [ ] Dockerización completa del ecosistema bridge + servidores MCP.

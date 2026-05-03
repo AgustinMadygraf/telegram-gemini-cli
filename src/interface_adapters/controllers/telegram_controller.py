@@ -19,13 +19,26 @@ class TelegramController:
             raise PermissionError("Invalid secret token")
 
         # 2. Extraer ChatMessage
-        if "message" in data and "text" in data["message"]:
+        if "message" in data:
             msg_data = data["message"]
+            text = msg_data.get("text") or msg_data.get("caption", "")
+            
+            # Detectar fotos
+            photo_ids = []
+            if "photo" in msg_data:
+                # Telegram envía varias versiones de la foto. Tomamos la última (mayor resolución).
+                photo_ids.append(msg_data["photo"][-1]["file_id"])
+            
+            # Si no hay texto ni foto, ignoramos (ej: stickers, encuestas)
+            if not text and not photo_ids:
+                return None
+
             msg = ChatMessage(
                 chat_id=msg_data["chat"]["id"],
                 user_id=msg_data["from"]["id"],
-                text=msg_data["text"],
-                username=msg_data["from"].get("username")
+                text=text,
+                username=msg_data["from"].get("username"),
+                photo_ids=photo_ids if photo_ids else None
             )
             
             # 3. Validar Usuario (Lanza PermissionError si no está en whitelist)

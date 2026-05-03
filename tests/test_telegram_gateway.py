@@ -1,3 +1,7 @@
+"""
+Path: tests/test_telegram_gateway.py
+"""
+
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 from src.interface_adapters.gateways.telegram_gateway import TelegramAdapter
@@ -85,9 +89,8 @@ async def test_send_message_generic_exception(mock_bot, mock_logger):
 async def test_set_webhook_telegram_error(mock_bot, mock_logger):
     adapter = TelegramAdapter(token="fake:token", logger=mock_logger)
     mock_bot.set_webhook.side_effect = TelegramError("Conflict")
-    with pytest.raises(TelegramError):
-        await adapter.set_webhook("https://test.com")
-    assert any("Error configurando Webhook" in call.args[0] for call in mock_logger.error.call_args_list)
+    assert await adapter.set_webhook("https://test.com") is False
+    assert any("Error al configurar Webhook" in call.args[0] for call in mock_logger.error.call_args_list)
 
 @pytest.mark.asyncio
 async def test_set_webhook_generic_exception(mock_bot, mock_logger):

@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     VERTEX_PROJECT_ID: Optional[str] = None
     VERTEX_LOCATION: str = "us-central1"
     
+    # Persistencia
+    SQLITE_DB_PATH: str = os.path.join(os.path.expanduser("~"), ".gemini", "antigravity", "history.db")
+    
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 settings = Settings()

@@ -2,13 +2,16 @@
 Path: src/use_cases/process_message.py
 """
 
-from src.entities.chat import ChatMessage
 from src.use_cases.ports.interfaces import (
     AIEngineGateway, 
     MessengerGateway, 
-    MessagePresenter
+    MessagePresenter,
+    ChatHistoryGateway,
+    LoggerPort
 )
-from typing import List
+from src.entities.chat import ChatMessage
+from typing import List, Optional
+import os
 
 class ProcessMessageUseCase:
     def __init__(
@@ -16,12 +19,16 @@ class ProcessMessageUseCase:
         ai_engine: AIEngineGateway, 
         messenger: MessengerGateway,
         presenter: MessagePresenter,
-        allowed_users: List[int]
+        logger: LoggerPort,
+        allowed_users: List[int],
+        history: Optional[ChatHistoryGateway] = None
     ):
         self.ai_engine = ai_engine
         self.messenger = messenger
         self.presenter = presenter
+        self.logger = logger
         self.allowed_users = allowed_users
+        self.history = history
 
     async def validate_user(self, user_id: int, chat_id: int) -> None:
         if user_id not in self.allowed_users:
@@ -35,6 +42,12 @@ class ProcessMessageUseCase:
 
     async def execute(self, message: ChatMessage) -> None:
         await self.validate_user(message.user_id, message.chat_id)
+
+        # 0. Persistir mensaje del usuario
+        if self.history:
+            message.role = "user"
+            message.session_id = f"chat_{message.chat_id}"
+            await self.history.save_message(message)
 
         # 1. Manejo de Comandos Especiales
         session_id = f"chat_{message.chat_id}"
@@ -58,26 +71,58 @@ class ProcessMessageUseCase:
         # 2. Notificar estado (Typing)
         await self.messenger.set_typing(message.chat_id)
         
-        # LOG CLI: Mensaje de entrada
-        in_preview = message.text[:60] if len(message.text) > 60 else message.text
-        print(f"📥 [IN] {message.user_id}: \"{in_preview}\"")
+        # 3. Manejo de Adjuntos (Multimodal)
+        attachments = []
+        if message.photo_ids:
+            self.logger.info(f"🖼️  Procesando {len(message.photo_ids)} fotos...")
+            for photo_id in message.photo_ids:
+                file_path = await self.messenger.get_file_path(photo_id)
+                if file_path:
+                    # Ruta local temporal
+                    local_filename = f"photo_{photo_id}.jpg"
+                    local_path = os.path.join(os.path.expanduser("~"), ".gemini", "antigravity", "tmp", "downloads", local_filename)
+                    
+                    success = await self.messenger.download_file(file_path, local_path)
+                    if success:
+                        attachments.append(local_path)
+                        self.logger.info(f"✅ Foto descargada: {local_path}")
 
-        # 3. Consultar a la IA
-        response = await self.ai_engine.ask(message.text, session_id=session_id)
+        # LOG: Mensaje de entrada
+        in_preview = message.text[:60] if len(message.text) > 60 else message.text
+        self.logger.info(f"📥 [IN] {message.user_id}: \"{in_preview}\" {'📎 (+'+str(len(attachments))+' adjuntos)' if attachments else ''}")
+
+        # 4. Consultar a la IA
+        response = await self.ai_engine.ask(message.text, session_id=session_id, attachments=attachments)
         
-        # LOG CLI: Mensaje de salida (si fue exitoso)
+        # 5. Limpieza de adjuntos temporales
+        for path in attachments:
+            try:
+                if os.path.exists(path):
+                    os.remove(path)
+            except Exception as e:
+                self.logger.warning(f"⚠️ No se pudo eliminar archivo temporal {path}: {e}")
+        
+        # 6. Persistir respuesta de la IA
         if response.success:
             out_preview = response.text[:60] if len(response.text) > 60 else response.text
-            print(f"📤 [OUT] Gemini: \"{out_preview}\"")
+            self.logger.info(f"📤 [OUT] Gemini: \"{out_preview}\"")
+            
+            if self.history:
+                ai_msg = ChatMessage(
+                    chat_id=message.chat_id,
+                    user_id=0, # ID del bot
+                    text=response.text,
+                    role="assistant",
+                    session_id=session_id
+                )
+                await self.history.save_message(ai_msg)
         else:
-            # En caso de error, mostramos el mensaje COMPLETO en la consola para diagnóstico
-            print(f"⚠️ [ERR] Gemini falló:\n--- START ERROR ---\n{response.error_message}\n--- END ERROR ---")
+            self.logger.error(f"⚠️ [ERR] Gemini falló: {response.error_message}")
 
-        # 3. Formatear respuesta vía Presenter (Capa de Presentación)
-        # El presenter ahora convierte Markdown a HTML robusto.
+        # 7. Formatear respuesta vía Presenter (Capa de Presentación)
         formatted_messages = self.presenter.format_response(response)
 
-        # 4. Enviar cada fragmento resultante
+        # 8. Enviar cada fragmento resultante
         for msg_text in formatted_messages:
             await self.messenger.send_message(
                 chat_id=message.chat_id, 

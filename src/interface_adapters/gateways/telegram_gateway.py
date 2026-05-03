@@ -7,6 +7,8 @@ from telegram.error import TelegramError
 from src.use_cases.ports.interfaces import MessengerGateway, CredentialValidatorGateway, LoggerPort
 from src.entities.network import WebhookStatus
 from typing import Optional
+import os
+import httpx
 
 class TelegramAdapter(MessengerGateway, CredentialValidatorGateway):
     def __init__(self, token: str, logger: LoggerPort):
@@ -60,12 +62,35 @@ class TelegramAdapter(MessengerGateway, CredentialValidatorGateway):
         )
 
     async def set_webhook(self, url: str, secret_token: Optional[str] = None) -> bool:
-        """Registra la URL del webhook."""
+        """Configura la URL del webhook en Telegram."""
+        self.logger.info(f"✅ Sincronizando Webhook (Limpieza de estado): '{url}'")
         try:
             return await self.bot.set_webhook(url=url, secret_token=secret_token)
-        except TelegramError as e:
-            self.logger.error(f"Error configurando Webhook: {e.message}")
-            raise e
         except Exception as e:
-            self.logger.error(f"Error inesperado configurando Webhook: {str(e)}")
+            self.logger.error(f"❌ Error al configurar Webhook: {e}")
+            return False
+
+    async def get_file_path(self, file_id: str) -> str:
+        """Obtiene la ruta del archivo desde los servidores de Telegram."""
+        try:
+            file = await self.bot.get_file(file_id)
+            # Retornamos la URL completa para descargarla nosotros
+            return file.file_path
+        except Exception as e:
+            self.logger.error(f"❌ Error obteniendo ruta de archivo {file_id}: {e}")
+            return ""
+
+    async def download_file(self, file_path: str, destination: str) -> bool:
+        """Descarga el archivo a la ruta local especificada."""
+        try:
+            os.makedirs(os.path.dirname(destination), exist_ok=True)
+            async with httpx.AsyncClient() as client:
+                response = await client.get(file_path)
+                if response.status_code == 200:
+                    with open(destination, "wb") as f:
+                        f.write(response.content)
+                    return True
+            return False
+        except Exception as e:
+            self.logger.error(f"❌ Error descargando archivo: {e}")
             return False

@@ -9,8 +9,11 @@ from src.entities.network import WebhookStatus
 
 class AIEngineGateway(ABC):
     @abstractmethod
-    async def ask(self, prompt: str, session_id: Optional[str] = None) -> AIResponse:
-        """Envia un prompt a la IA y devuelve su respuesta."""
+    async def ask(self, prompt: str, session_id: Optional[str] = None, attachments: List[str] = None) -> AIResponse:
+        """
+        Envia un prompt a la IA y devuelve su respuesta.
+        attachments: Lista de rutas locales a archivos adjuntos.
+        """
         pass
 
     @abstractmethod
@@ -43,6 +46,16 @@ class MessengerGateway(ABC):
     @abstractmethod
     async def set_webhook(self, url: str, secret_token: Optional[str] = None) -> bool:
         """Configura la URL del webhook en el proveedor."""
+        pass
+
+    @abstractmethod
+    async def get_file_path(self, file_id: str) -> str:
+        """Obtiene la ruta relativa de un archivo en los servidores del proveedor."""
+        pass
+
+    @abstractmethod
+    async def download_file(self, file_path: str, destination: str) -> bool:
+        """Descarga un archivo desde el proveedor a una ruta local."""
         pass
 
 class CredentialValidatorGateway(ABC):
@@ -104,12 +117,41 @@ class MarkdownConverterPort(ABC):
         """Convierte texto Markdown a HTML."""
         pass
 
+from src.entities.chat import ChatMessage
+
+class ChatHistoryGateway(ABC):
+    @abstractmethod
+    async def save_message(self, message: ChatMessage) -> None:
+        """Guarda un mensaje en el historial persistente."""
+        pass
+
+    @abstractmethod
+    async def get_recent_history(self, chat_id: int, limit: int = 10) -> List[ChatMessage]:
+        """Recupera los últimos N mensajes de un chat."""
+        pass
+
 class LoggerPort(ABC):
     @abstractmethod
-    def info(self, msg: str) -> None: pass
+    def info(self, msg: str) -> None:
+        """Loguea un mensaje informativo."""
+        pass
+
     @abstractmethod
-    def error(self, msg: str) -> None: pass
+    def error(self, msg: str) -> None:
+        """Loguea un mensaje de error."""
+        pass
+
     @abstractmethod
-    def debug(self, msg: str) -> None: pass
+    def debug(self, msg: str) -> None:
+        """Loguea un mensaje de depuración."""
+        pass
+
     @abstractmethod
-    def warning(self, msg: str) -> None: pass
+    def warning(self, msg: str) -> None:
+        """Loguea una advertencia."""
+        pass
+
+    @abstractmethod
+    def critical(self, msg: str) -> None:
+        """Loguea un fallo crítico del sistema."""
+        pass

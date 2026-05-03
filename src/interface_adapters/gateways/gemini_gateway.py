@@ -8,15 +8,19 @@ from src.use_cases.ports.interfaces import (
     AIEngineGateway, 
     CredentialValidatorGateway,
     ShellGateway,
-    FileSystemGateway
+    FileSystemGateway,
+    LoggerPort
 )
 from src.entities.ai import AIResponse
+from src.use_cases.services.output_sanitizer import OutputSanitizerService
 
 class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
     def __init__(
         self, 
         shell: ShellGateway, 
         fs: FileSystemGateway,
+        logger: LoggerPort,
+        sanitizer: OutputSanitizerService,
         binary_path: str = "/usr/local/bin/gemini",
         auth_method: str = "api_key",
         api_key: Optional[str] = None,
@@ -26,6 +30,8 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
     ):
         self.shell = shell
         self.fs = fs
+        self.logger = logger
+        self.sanitizer = sanitizer
         self.binary_path = binary_path
         self.auth_method = auth_method
         self.api_key = api_key
@@ -34,7 +40,7 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
         self.workspace_path = workspace_path if workspace_path and workspace_path.strip() else None
         
         if self.workspace_path:
-            print(f"📂 Workspace configurado en: {self.workspace_path}")
+            self.logger.info(f"📂 Workspace configurado en: {self.workspace_path}")
             self.fs.ensure_dir(self.workspace_path)
         
         # Centralizamos en la nueva carpeta storage
@@ -81,16 +87,16 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
                 if os.path.exists(target_config_dir):
                     shutil.rmtree(target_config_dir)
                 
-                print(f"🔑 Sincronizando credenciales desde {global_config_dir}")
+                self.logger.info(f"🔑 Sincronizando credenciales desde {global_config_dir}")
                 # Copiamos la carpeta entera para asegurar OAuth y settings
                 shutil.copytree(
                     global_config_dir, 
                     target_config_dir, 
                     ignore=shutil.ignore_patterns("tmp*", "sessions*", "logs*", "antigravity*")
                 )
-                print(f"✅ Credenciales sincronizadas.")
+                self.logger.info(f"✅ Credenciales sincronizadas.")
             except Exception as e:
-                print(f"⚠️  Error sincronizando credenciales: {e}")
+                self.logger.warning(f"⚠️  Error sincronizando credenciales: {e}")
 
     async def validate(self) -> bool:
         """
@@ -105,7 +111,7 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
         # 2. Validar dependencias críticas (ripgrep)
         rc, _, _ = await self.shell.execute(["which", "rg"])
         if rc != 0:
-            print("❌ Dependencia faltante: 'ripgrep' (rg) es necesario para el funcionamiento de Gemini CLI.")
+            self.logger.error("❌ Dependencia faltante: 'ripgrep' (rg) es necesario para el funcionamiento de Gemini CLI.")
             return False
         
         # 2. Validar autenticación (Deep Auth Check)
@@ -130,16 +136,16 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
             ]
             
             timeout_seconds = 90.0
-            print(f"⌛ Validando credenciales de Gemini (Deep Auth Check - Máx {timeout_seconds}s)")
+            self.logger.info(f"⌛ Validando credenciales de Gemini (Deep Auth Check - Máx {timeout_seconds}s)")
             
             # Para la validación, NO usamos el workspace para evitar errores si está vacío
             return_code, stdout, stderr = await self.shell.execute(args, env=env, cwd=None, timeout=timeout_seconds)
             
-            sanitized_stdout = self._sanitize_output(stdout)
-            sanitized_stderr = self._sanitize_output(stderr)
+            sanitized_stdout = self.sanitizer.sanitize(stdout)
+            sanitized_stderr = self.sanitizer.sanitize(stderr)
 
             if return_code != 0:
-                print(f"⚠️  Error en validación Gemini CLI (Código {return_code}): {sanitized_stderr}")
+                self.logger.warning(f"⚠️  Error en validación Gemini CLI (Código {return_code}): {sanitized_stderr}")
                 return False
             
             # 3. Validar sanidad de la salida (infraestructura)
@@ -147,47 +153,22 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
             # Ignoramos avisos de "Ripgrep fallback" o fallos de conexión al IDE (VS Code).
             critical_errors = ["command not found", "fatal error", "invalid api key", "authentication failed"]
             if any(err in sanitized_stderr.lower() or err in sanitized_stdout.lower() for err in critical_errors):
-                print(f"❌ Error crítico detectado en la salida de Gemini: {sanitized_stdout} {sanitized_stderr}")
+                self.logger.error(f"❌ Error crítico detectado en la salida de Gemini: {sanitized_stdout} {sanitized_stderr}")
                 return False
 
             return True
         except Exception as e:
-            print(f"❌ Excepción en validador Gemini: {str(e)}")
+            self.logger.error(f"❌ Excepción en validador Gemini: {str(e)}")
             return False
 
-    def _sanitize_output(self, text: str) -> str:
-        """Limpia el ruido de infraestructura (logs, stacktraces de Node, avisos de Ripgrep)."""
-        lines = text.splitlines()
-        clean_lines = []
-        
-        # Patrones de ruido conocidos
-        noise_patterns = [
-            "ripgrep is not",
-            "falling back to greptool",
-            "ide fetch failed",
-            "failed to connect to ide",
-            "no previous sessions found",
-            "mcp issues detected",
-            "[error]",
-            "[info]",
-            "    at ", # Stack traces de Node.js
-            "  [cause]:"
-        ]
-        
-        for line in lines:
-            # Si la línea no contiene ninguno de los patrones de ruido, la mantenemos
-            if not any(pattern in line.lower() for pattern in noise_patterns):
-                clean_lines.append(line)
-        
-        return "\n".join(clean_lines).strip()
-
-    async def ask(self, prompt: str, session_id: str = "latest") -> AIResponse:
+    async def ask(self, prompt: str, session_id: Optional[str] = None, attachments: List[str] = None) -> AIResponse:
         """Ejecuta una consulta al CLI de Gemini delegando la ejecución al shell con aislamiento."""
         return_code, stdout, stderr = -1, "", ""
         try:
+            session_id = session_id or "latest"
             env = self._get_env_for_session(session_id)
             
-            # Intentamos resumir la sesión anterior en el directorio aislado.
+            # Construcción de argumentos base
             args = [
                 self.binary_path,
                 "--sandbox",
@@ -197,11 +178,15 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
                 "--approval-mode", "auto_edit"
             ]
             
+            # Añadir archivos adjuntos si existen
+            if attachments:
+                args.extend(attachments)
+            
             return_code, stdout, stderr = await self.shell.execute(args, env=env, cwd=self.workspace_path, timeout=180.0)
 
             # Limpiamos el ruido tanto de stdout como de stderr (a veces Gemini manda logs por stdout)
-            sanitized_stdout = self._sanitize_output(stdout)
-            sanitized_stderr = self._sanitize_output(stderr)
+            sanitized_stdout = self.sanitizer.sanitize(stdout)
+            sanitized_stderr = self.sanitizer.sanitize(stderr)
 
             if return_code == 0:
                 return AIResponse(text=sanitized_stdout, success=True)
@@ -211,7 +196,7 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
                     args.remove("--resume")
                     return_code, stdout, stderr = await self.shell.execute(args, env=env, cwd=self.workspace_path, timeout=180.0)
                     if return_code == 0:
-                        return AIResponse(text=self._sanitize_output(stdout), success=True)
+                        return AIResponse(text=self.sanitizer.sanitize(stdout), success=True)
 
                 return AIResponse(
                     text="", 
