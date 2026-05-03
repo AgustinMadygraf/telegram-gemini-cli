@@ -185,25 +185,28 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
             
             return_code, stdout, stderr = await self.shell.execute(args, env=env, cwd=self.workspace_path, timeout=180.0)
 
-            # Limpiamos el ruido tanto de stdout como de stderr (a veces Gemini manda logs por stdout)
+            # Sanitizamos ambos flujos
             sanitized_stdout = self.sanitizer.sanitize(stdout)
             sanitized_stderr = self.sanitizer.sanitize(stderr)
 
             if return_code == 0:
-                return AIResponse(text=sanitized_stdout, success=True)
+                # Si tenemos éxito, priorizamos la salida estándar sanitizada
+                # Si stdout queda vacío tras sanitizar, pero stderr tiene contenido útil (raro en éxito), lo consideramos.
+                result_text = sanitized_stdout or sanitized_stderr
+                return AIResponse(text=result_text, success=True)
             else:
-                # Si falló por --resume, reintentamos sin él
-                if "--resume" in stderr or "no session" in stderr.lower():
+                # Manejo específico de fallos de sesión para reintentar sin --resume
+                if "--resume" in stderr.lower() or "no session" in stderr.lower():
+                    self.logger.info(f"🔄 Reintentando sin --resume para sesión {session_id}")
                     args.remove("--resume")
                     return_code, stdout, stderr = await self.shell.execute(args, env=env, cwd=self.workspace_path, timeout=180.0)
                     if return_code == 0:
                         return AIResponse(text=self.sanitizer.sanitize(stdout), success=True)
 
-                return AIResponse(
-                    text="", 
-                    success=False, 
-                    error_message=sanitized_stderr or sanitized_stdout or "Error desconocido"
-                )
+                # Si falló definitivamente, devolvemos el error sanitizado
+                # Si el error sanitizado queda vacío, usamos un mensaje genérico
+                error_msg = sanitized_stderr or sanitized_stdout or "Error desconocido en Gemini CLI"
+                return AIResponse(text="", success=False, error_message=error_msg)
         except Exception as e:
             return AIResponse(text="", success=False, error_message=str(e))
 

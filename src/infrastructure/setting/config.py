@@ -23,9 +23,14 @@ class Settings(BaseSettings):
     VERTEX_PROJECT_ID: Optional[str] = None
     VERTEX_LOCATION: str = "us-central1"
     
-    # Persistencia
+    # Persistencia y Rutas
+    APP_DATA_DIR: str = os.path.join(os.path.expanduser("~"), ".gemini", "antigravity")
     SQLITE_DB_PATH: str = os.path.join(os.path.expanduser("~"), ".gemini", "antigravity", "history.db")
+    DOWNLOADS_PATH: str = os.path.join(os.path.expanduser("~"), ".gemini", "antigravity", "tmp", "downloads")
     
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 settings = Settings()
+# Asegurar que los directorios existan
+os.makedirs(settings.APP_DATA_DIR, exist_ok=True)
+os.makedirs(settings.DOWNLOADS_PATH, exist_ok=True)

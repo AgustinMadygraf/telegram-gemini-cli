@@ -86,8 +86,9 @@ class ProcessMessageUseCase:
             for photo_id in message.photo_ids:
                 file_path = await self.file_gateway.get_file_path(photo_id)
                 if file_path:
+                    from src.infrastructure.setting.config import settings
                     local_filename = f"photo_{photo_id}.jpg"
-                    local_path = os.path.join(os.path.expanduser("~"), ".gemini", "antigravity", "tmp", "downloads", local_filename)
+                    local_path = os.path.join(settings.DOWNLOADS_PATH, local_filename)
                     if await self.file_gateway.download_file(file_path, local_path):
                         attachments.append(local_path)
 
