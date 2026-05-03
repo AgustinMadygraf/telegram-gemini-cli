@@ -40,16 +40,28 @@ Copia `.env.example` a `.env` y completa las variables:
 
 ---
 
-## 🚀 Ejecución y Mantenimiento
+### Instalación y Preparación
+```bash
+# 1. Crear entorno virtual (si no existe)
+python3 -m venv venv
+
+# 2. Activar entorno virtual
+source venv/bin/activate
+
+# 3. Instalar dependencias
+pip install -r requirements.txt
+```
 
 ### Iniciar el Sistema
 ```bash
+# Asegúrate de que el venv esté activo
 python main.py
 ```
 
 ### Ejecutar Pruebas y Cobertura
 ```bash
-export PYTHONPATH=$PYTHONPATH:. && pytest --cov=src --cov-report=term-missing tests/
+# Con el venv activo, simplemente:
+pytest
 ```
 
 ---

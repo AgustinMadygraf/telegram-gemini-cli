@@ -49,6 +49,12 @@ Para garantizar que el bot nunca falle al enviar una respuesta (problema común 
 
 Si deseas probar el comportamiento del `gemini-cli` replicando exactamente lo que ve el bot (mismo historial y aislamiento), sigue estos pasos desde la terminal en la raíz del proyecto:
 
+### 0. Activar Entorno Virtual
+Antes de nada, asegúrate de estar en el entorno del proyecto:
+```bash
+source venv/bin/activate
+```
+
 ### 1. Replicar el Entorno de Sesión
 El bot utiliza la variable `GEMINI_CLI_HOME` para aislar cada chat. Para entrar en una sesión específica:
 ```bash
