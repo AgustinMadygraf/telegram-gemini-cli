@@ -4,6 +4,7 @@ Path: main.py
 
 import uvicorn
 import sys
+import os
 from src.infrastructure.setting.config import settings
 from src.infrastructure.setting.logger import setup_logger
 from src.interface_adapters.gateways.gemini_gateway import GeminiCLIAdapter
@@ -115,6 +116,10 @@ async def startup_check():
     print("🚀 Sistema listo para recibir mensajes.")
 
 if __name__ == "__main__":
+    # Doble limpieza de pantalla para un inicio impecable
+    os.system('clear')
+    os.system('clear')
+    
     try:
         # 0. Limpiar puerto si es necesario
         PortGuard(port=8000).clean_port()

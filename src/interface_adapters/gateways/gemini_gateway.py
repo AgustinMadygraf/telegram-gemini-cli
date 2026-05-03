@@ -107,7 +107,8 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
             ]
             
             print(f"⌛ Validando credenciales de Gemini (Deep Auth Check)...")
-            return_code, stdout, stderr = await self.shell.execute(args, env=env, cwd=self.workspace_path)
+            # Para la validación, NO usamos el workspace para evitar errores si está vacío
+            return_code, stdout, stderr = await self.shell.execute(args, env=env, cwd=None)
             
             if return_code != 0:
                 print(f"⚠️  Error en validación Gemini CLI (Código {return_code}): {stderr}")

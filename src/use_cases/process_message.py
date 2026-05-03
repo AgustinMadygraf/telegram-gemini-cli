@@ -58,9 +58,20 @@ class ProcessMessageUseCase:
         # 2. Notificar estado (Typing)
         await self.messenger.set_typing(message.chat_id)
         
+        # LOG CLI: Mensaje de entrada
+        in_preview = (message.text[:60] + '...') if len(message.text) > 60 else message.text
+        print(f"📥 [IN] {message.user_id}: \"{in_preview}\"")
+
         # 3. Consultar a la IA
         response = await self.ai_engine.ask(message.text, session_id=session_id)
         
+        # LOG CLI: Mensaje de salida (si fue exitoso)
+        if response.success:
+            out_preview = (response.text[:60] + '...') if len(response.text) > 60 else response.text
+            print(f"📤 [OUT] Gemini: \"{out_preview}\"")
+        else:
+            print(f"⚠️ [ERR] Gemini falló: {response.error_message[:60]}")
+
         # 3. Formatear respuesta vía Presenter (Capa de Presentación)
         # El presenter ahora convierte Markdown a HTML robusto.
         formatted_messages = self.presenter.format_response(response)
