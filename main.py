@@ -23,6 +23,7 @@ from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from src.use_cases.process_message import ProcessMessageUseCase
 from src.use_cases.system_validator import SystemValidatorService
+from src.use_cases.services.resilience_service import CircuitBreakerService
 
 # 0. Configurar Observabilidad Global
 setup_logger()
@@ -54,6 +55,7 @@ history_adapter = SQLiteHistoryAdapter(
     db_path=settings.SQLITE_DB_PATH, 
     logger=StandardLoggerAdapter("infrastructure.database")
 )
+circuit_breaker = CircuitBreakerService(failure_threshold=3, recovery_timeout=60)
 
 # 2. Instanciar Adaptadores de Infraestructura (Gateways)
 gemini_gateway = GeminiCLIAdapter(
@@ -69,7 +71,7 @@ gemini_gateway = GeminiCLIAdapter(
     workspace_path=settings.GEMINI_WORKSPACE
 )
 
-telegram_gateway = TelegramAdapter(
+telegram_adapter = TelegramAdapter(
     token=settings.TELEGRAM_BOT_TOKEN, 
     logger=telegram_logger
 )
@@ -83,9 +85,10 @@ mcp_validator = MCPValidatorAdapter(fs=file_system)
 
 # 3. Instanciar Casos de Uso y Servicios
 validator_service = SystemValidatorService(
-    validators=[gemini_gateway, telegram_gateway],
+    validators=[gemini_gateway, telegram_adapter],
     logger=system_logger,
-    messenger=telegram_gateway,
+    messenger=telegram_adapter, # Implementa MessageGateway
+    web_admin=telegram_adapter, # Implementa WebAdminGateway
     tunnel=tunnel_runner,
     mcp_validator=mcp_validator,
     webhook_url=settings.WEBHOOK_URL,
@@ -100,11 +103,13 @@ telegram_presenter = TelegramPresenter(
 
 process_message_use_case = ProcessMessageUseCase(
     ai_engine=gemini_gateway,
-    messenger=telegram_gateway,
+    messenger=telegram_adapter, # Implementa MessageGateway
+    file_gateway=telegram_adapter, # Implementa FileGateway
     presenter=telegram_presenter,
     logger=StandardLoggerAdapter("use_case.process_message"),
     allowed_users=settings.ALLOWED_CHAT_IDS,
-    history=history_adapter
+    history=history_adapter,
+    circuit_breaker=circuit_breaker
 )
 
 # 4. Instanciar Adaptadores de Interfaz (Controllers)
@@ -126,24 +131,17 @@ async def startup_check():
     report = await validator_service.validate_all()
     
     if not report.is_ok:
-        # El validator_service ya habrá logueado los errores a través de su logger inyectado
         sys.exit(1)
     
     system_logger.info("🚀 Sistema listo para recibir mensajes.")
 
 if __name__ == "__main__":
-    # Doble limpieza de pantalla para un inicio impecable
     os.system('clear')
     os.system('clear')
     
     try:
-        # 0. Limpiar puerto si es necesario
         PortGuard(port=8000, logger=system_logger).clean_port()
-
-        # 1. Iniciar Túnel de Red
         tunnel_runner.start_tunnel()
-
-        # 2. Correr servidor (El lifespan se encargará del startup_check y cleanup)
         uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
     except KeyboardInterrupt:
         pass

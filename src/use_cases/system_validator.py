@@ -4,30 +4,33 @@ Path: src/use_cases/system_validator.py
 
 from src.use_cases.ports.interfaces import (
     CredentialValidatorGateway, 
-    MessengerGateway, 
+    WebAdminGateway,
+    MessageGateway,
     TunnelGateway, 
     MCPValidatorGateway,
     LoggerPort
 )
 from src.entities.validation import ValidationReport
-from typing import List
+from typing import List, Optional
 
 class SystemValidatorService:
     def __init__(
         self, 
-        validators: List[CredentialValidatorGateway],
-        logger: LoggerPort,
-        messenger: MessengerGateway = None,
-        tunnel: TunnelGateway = None,
-        mcp_validator: MCPValidatorGateway = None,
-        webhook_url: str = "",
-        secret_token: str = ""
+        validators: List[CredentialValidatorGateway], 
+        logger: LoggerPort, 
+        messenger: MessageGateway,
+        tunnel: TunnelGateway,
+        mcp_validator: MCPValidatorGateway,
+        web_admin: WebAdminGateway,
+        webhook_url: str,
+        secret_token: Optional[str] = None
     ):
         self.validators = validators
         self.logger = logger
         self.messenger = messenger
         self.tunnel = tunnel
         self.mcp_validator = mcp_validator
+        self.web_admin = web_admin
         self.webhook_url = webhook_url
         self.secret_token = secret_token
 
@@ -51,14 +54,12 @@ class SystemValidatorService:
         if self.tunnel:
             self._report_info(report, f"Validando estado del túnel para: {self.webhook_url}")
             if not await self.tunnel.validate_tunnel(url=self.webhook_url):
-                # FLEXIBILIDAD: Solo es un error crítico si estamos en producción (podría ser un flag)
-                # Por ahora, lo bajamos a advertencia para permitir el desarrollo.
                 self._report_info(report, "⚠️  Túnel no detectado o token faltante. Se permite continuar en modo degradado.")
         else:
             self._report_info(report, "No se ha configurado un gestor de túneles.")
 
         # 3. Validar y Sincronizar Red (Webhook)
-        if self.messenger:
+        if self.web_admin:
             await self._validate_network(report)
         
         # 4. Validar Ecosistema MCP
@@ -88,28 +89,20 @@ class SystemValidatorService:
         """Valida y sincroniza la salud del webhook en Telegram."""
         self._report_info(report, "Verificando salud del Webhook en Telegram")
         try:
-            status = await self.messenger.get_webhook_status()
+            status = await self.web_admin.get_webhook_status()
             
             if status.url != self.webhook_url or status.last_error_message:
                 self._report_info(report, f"Sincronizando Webhook (Limpieza de estado): '{self.webhook_url}'")
                 try:
-                    await self.messenger.set_webhook(
+                    await self.web_admin.set_webhook(
                         url=self.webhook_url, 
                         secret_token=self.secret_token
                     )
                     self._report_info(report, "Webhook sincronizado con éxito.")
-                    # Si acabamos de sincronizar con éxito, ignoramos el error anterior que venía en 'status'
-                    # ya que era del estado previo a la sincronización.
-                    return 
                 except Exception as e:
                     self._report_error(report, f"Telegram rechazó el Webhook: {str(e)}")
             else:
                 self._report_info(report, f"Webhook ya está sincronizado en: {status.url}")
-            
-            # Si llegamos aquí y hay un error, es porque ya estaba sincronizado pero sigue fallando
-            if status.last_error_message:
-                self._report_error(report, f"Telegram reporta fallo persistente en el Webhook: {status.last_error_message}")
-                self._report_info(report, "💡 Sugerencia: Verifique que el túnel esté activo y que el servidor acepte conexiones.")
                 
         except Exception as e:
             self._report_error(report, f"Fallo de conexión con Telegram: {e}")

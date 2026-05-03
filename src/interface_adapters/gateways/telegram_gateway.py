@@ -4,13 +4,19 @@ Path: src/interface_adapters/gateways/telegram_gateway.py
 
 from telegram import Bot
 from telegram.error import TelegramError
-from src.use_cases.ports.interfaces import MessengerGateway, CredentialValidatorGateway, LoggerPort
+from src.use_cases.ports.interfaces import (
+    MessageGateway, 
+    FileGateway, 
+    WebAdminGateway, 
+    CredentialValidatorGateway, 
+    LoggerPort
+)
 from src.entities.network import WebhookStatus
 from typing import Optional
 import os
 import httpx
 
-class TelegramAdapter(MessengerGateway, CredentialValidatorGateway):
+class TelegramAdapter(MessageGateway, FileGateway, WebAdminGateway, CredentialValidatorGateway):
     def __init__(self, token: str, logger: LoggerPort):
         self.bot = Bot(token=token)
         self.logger = logger

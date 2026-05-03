@@ -4,12 +4,15 @@ Path: src/use_cases/process_message.py
 
 from src.use_cases.ports.interfaces import (
     AIEngineGateway, 
-    MessengerGateway, 
+    MessageGateway,
+    FileGateway,
     MessagePresenter,
     ChatHistoryGateway,
     LoggerPort
 )
 from src.entities.chat import ChatMessage
+from src.entities.ai import AIResponse
+from src.use_cases.services.resilience_service import CircuitBreakerService
 from typing import List, Optional
 import os
 
@@ -17,22 +20,25 @@ class ProcessMessageUseCase:
     def __init__(
         self, 
         ai_engine: AIEngineGateway, 
-        messenger: MessengerGateway,
+        messenger: MessageGateway,
         presenter: MessagePresenter,
         logger: LoggerPort,
         allowed_users: List[int],
-        history: Optional[ChatHistoryGateway] = None
+        history: Optional[ChatHistoryGateway] = None,
+        file_gateway: Optional[FileGateway] = None,
+        circuit_breaker: Optional[CircuitBreakerService] = None
     ):
         self.ai_engine = ai_engine
         self.messenger = messenger
+        self.file_gateway = file_gateway
         self.presenter = presenter
         self.logger = logger
         self.allowed_users = allowed_users
         self.history = history
+        self.circuit_breaker = circuit_breaker or CircuitBreakerService()
 
     async def validate_user(self, user_id: int, chat_id: int) -> None:
         if user_id not in self.allowed_users:
-            # Enviar mensaje de cortesía al usuario en Telegram (Usando HTML)
             await self.messenger.send_message(
                 chat_id, 
                 f"⚠️ <b>Acceso denegado</b>\nSu ID de usuario (<code>{user_id}</code>) no está autorizado. Contacte con el administrador.",
@@ -44,96 +50,77 @@ class ProcessMessageUseCase:
         await self.validate_user(message.user_id, message.chat_id)
 
         # 0. Persistir mensaje del usuario
+        session_id = f"chat_{message.chat_id}"
         if self.history:
             message.role = "user"
-            message.session_id = f"chat_{message.chat_id}"
+            message.session_id = session_id
             await self.history.save_message(message)
 
         # 1. Manejo de Comandos Especiales
-        session_id = f"chat_{message.chat_id}"
         if message.text.strip().lower() == "/reset":
             await self.messenger.set_typing(message.chat_id)
             success = await self.ai_engine.reset(session_id=session_id)
-            if success:
-                await self.messenger.send_message(
-                    chat_id=message.chat_id, 
-                    text="🔄 <b>Contexto reiniciado</b>\nSe ha limpiado el historial de la conversación.",
-                    parse_mode="HTML"
-                )
-            else:
-                await self.messenger.send_message(
-                    chat_id=message.chat_id, 
-                    text="❌ <b>Error</b>\nNo se pudo reiniciar el contexto.",
-                    parse_mode="HTML"
-                )
+            await self.messenger.send_message(
+                chat_id=message.chat_id, 
+                text="🔄 <b>Contexto reiniciado</b>" if success else "❌ <b>Error al reiniciar</b>",
+                parse_mode="HTML"
+            )
             return
 
-        # 2. Notificar estado (Typing)
+        # 2. Verificar Circuit Breaker antes de proceder
+        if not self.circuit_breaker.can_execute():
+            self.logger.warning(f"🛡️ Circuito ABIERTO para chat {message.chat_id}. Rechazando ejecución.")
+            await self.messenger.send_message(
+                chat_id=message.chat_id,
+                text="🛡️ <b>Modo de Resiliencia Activo</b>\nEstoy experimentando fallos técnicos persistentes y he entrado en modo de autoprotección. Por favor, intenta de nuevo en un minuto.",
+                parse_mode="HTML"
+            )
+            return
+
+        # 3. Notificar estado (Typing)
         await self.messenger.set_typing(message.chat_id)
         
-        # 3. Manejo de Adjuntos (Multimodal)
+        # 4. Manejo de Adjuntos (Multimodal)
         attachments = []
-        if message.photo_ids:
-            self.logger.info(f"🖼️  Procesando {len(message.photo_ids)} fotos...")
+        if message.photo_ids and self.file_gateway:
             for photo_id in message.photo_ids:
-                file_path = await self.messenger.get_file_path(photo_id)
+                file_path = await self.file_gateway.get_file_path(photo_id)
                 if file_path:
-                    # Ruta local temporal
                     local_filename = f"photo_{photo_id}.jpg"
                     local_path = os.path.join(os.path.expanduser("~"), ".gemini", "antigravity", "tmp", "downloads", local_filename)
-                    
-                    success = await self.messenger.download_file(file_path, local_path)
-                    if success:
+                    if await self.file_gateway.download_file(file_path, local_path):
                         attachments.append(local_path)
-                        self.logger.info(f"✅ Foto descargada: {local_path}")
 
-        # LOG: Mensaje de entrada
-        in_preview = message.text[:60] if len(message.text) > 60 else message.text
-        self.logger.info(f"📥 [IN] {message.user_id}: \"{in_preview}\" {'📎 (+'+str(len(attachments))+' adjuntos)' if attachments else ''}")
-
-        # 4. Consultar a la IA
-        response = await self.ai_engine.ask(message.text, session_id=session_id, attachments=attachments)
-        
-        # 5. Limpieza de adjuntos temporales
-        for path in attachments:
-            try:
-                if os.path.exists(path):
-                    os.remove(path)
-            except Exception as e:
-                self.logger.warning(f"⚠️ No se pudo eliminar archivo temporal {path}: {e}")
-        
-        # 6. Persistir y Validar respuesta de la IA
-        # Si la respuesta está vacía tras la sanitización, la tratamos como error técnico
-        if response.success and not response.text.strip():
-            response.success = False
-            response.error_message = "La IA devolvió una respuesta vacía o solo ruido técnico."
-            self.logger.warning("⚠️ Respuesta de Gemini quedó vacía tras sanitización.")
-
-        if response.success:
-            out_preview = response.text[:60] if len(response.text) > 60 else response.text
-            self.logger.info(f"📤 [OUT] Gemini: \"{out_preview}\"")
+        # 5. Consultar a la IA con Circuit Breaker
+        try:
+            response = await self.ai_engine.ask(message.text, session_id=session_id, attachments=attachments)
             
+            if response.success and response.text.strip():
+                self.circuit_breaker.record_success()
+            else:
+                self.circuit_breaker.record_failure()
+                if not response.text.strip():
+                    response.success = False
+                    response.error_message = "Respuesta vacía tras sanitización"
+        except Exception as e:
+            self.circuit_breaker.record_failure()
+            response = AIResponse(text="", success=False, error_message=str(e))
+
+        # 6. Limpieza y Persistencia
+        for path in attachments:
+            try: os.remove(path)
+            except: pass
+        
+        if response.success:
+            self.logger.info(f"📤 [OUT] Gemini: \"{response.text[:60]}...\"")
             if self.history:
-                ai_msg = ChatMessage(
-                    chat_id=message.chat_id,
-                    user_id=0, # ID del bot
-                    text=response.text,
-                    role="assistant",
-                    session_id=session_id
-                )
+                ai_msg = ChatMessage(chat_id=message.chat_id, user_id=0, text=response.text, role="assistant", session_id=session_id)
                 await self.history.save_message(ai_msg)
         else:
             self.logger.error(f"⚠️ [ERR] Gemini falló: {response.error_message}")
-            # Sobreescribimos el texto para el presenter si falló
-            response.text = "❌ <b>Lo siento</b>, estoy experimentando dificultades técnicas para procesar tu mensaje. Por favor, intenta de nuevo en unos momentos."
+            response.text = "❌ <b>Error Técnico</b>\nEstoy experimentando dificultades. Por favor, intenta de nuevo."
 
-        # 7. Formatear respuesta vía Presenter (Capa de Presentación)
+        # 7. Formatear y Enviar
         formatted_messages = self.presenter.format_response(response)
-
-        # 8. Enviar cada fragmento resultante
         for msg_text in formatted_messages:
-            await self.messenger.send_message(
-                chat_id=message.chat_id, 
-                text=msg_text,
-                parse_mode="HTML"
-            )
+            await self.messenger.send_message(chat_id=message.chat_id, text=msg_text, parse_mode="HTML")

@@ -1,3 +1,6 @@
+"""
+Path: tests/test_interfaces_coverage.py
+"""
 import pytest
 import asyncio
 from src.use_cases.ports import interfaces
@@ -18,13 +21,17 @@ async def test_interfaces_methods_coverage():
     class DummyPresenter(interfaces.MessagePresenter):
         def format_response(self, r): super().format_response(r)
 
-    class DummyMessenger(interfaces.MessengerGateway):
+    class DummyMessage(interfaces.MessageGateway):
         async def send_message(self, c, t, p=None): await super().send_message(c, t, p)
         async def set_typing(self, c): await super().set_typing(c)
-        async def get_webhook_status(self): await super().get_webhook_status()
-        async def set_webhook(self, u, s=None): await super().set_webhook(u, s)
+
+    class DummyFile(interfaces.FileGateway):
         async def get_file_path(self, f): await super().get_file_path(f)
         async def download_file(self, f, d): await super().download_file(f, d)
+
+    class DummyWeb(interfaces.WebAdminGateway):
+        async def get_webhook_status(self): await super().get_webhook_status()
+        async def set_webhook(self, u, s=None): await super().set_webhook(u, s)
 
     class DummyValidator(interfaces.CredentialValidatorGateway):
         async def validate(self): await super().validate()
@@ -72,14 +79,18 @@ async def test_interfaces_methods_coverage():
     pres = DummyPresenter()
     pres.format_response(AIResponse(text="hi", success=True))
 
-    # Messenger
-    msg = DummyMessenger()
+    # Messenger / Web / File
+    msg = DummyMessage()
     await msg.send_message(1, "hi")
     await msg.set_typing(1)
-    await msg.get_webhook_status()
-    await msg.set_webhook("url")
-    await msg.get_file_path("id")
-    await msg.download_file("path", "dest")
+    
+    web = DummyWeb()
+    await web.get_webhook_status()
+    await web.set_webhook("url")
+    
+    fil = DummyFile()
+    await fil.get_file_path("id")
+    await fil.download_file("path", "dest")
 
     # Validator
     val = DummyValidator()
