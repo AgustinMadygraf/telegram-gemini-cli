@@ -71,6 +71,14 @@ async def test_validate_ai_failure(validator, mock_ai):
     mock_ai.validate.return_value = False
     report = await validator.validate_all()
     assert report.is_ok is False
+    assert any("Fallo en validador" in msg for msg in report.error_messages)
+
+@pytest.mark.asyncio
+async def test_validate_tunnel_degraded(validator, mock_tunnel):
+    mock_tunnel.validate_tunnel.return_value = False
+    report = await validator.validate_all()
+    assert report.is_ok is True 
+    assert any("Túnel no detectado" in msg for msg in report.info_messages)
 
 @pytest.mark.asyncio
 async def test_network_validation_exception(validator, mock_web_admin):
@@ -80,6 +88,13 @@ async def test_network_validation_exception(validator, mock_web_admin):
     assert any("Fallo de conexión" in msg for msg in report.error_messages)
 
 @pytest.mark.asyncio
+async def test_mcp_validation_failure(validator, mock_mcp):
+    mock_mcp.validate_servers.return_value = [("xubio", False, "Missing build")]
+    report = await validator.validate_all()
+    assert report.is_ok is False
+    assert any("MCP 'xubio': NO DISPONIBLE" in msg for msg in report.error_messages)
+
+@pytest.mark.asyncio
 async def test_validate_network_out_of_sync(validator, mock_web_admin):
     mock_web_admin.get_webhook_status.return_value = WebhookStatus(
         url="https://different.com", has_custom_certificate=False, pending_update_count=0,
@@ -87,3 +102,13 @@ async def test_validate_network_out_of_sync(validator, mock_web_admin):
     )
     await validator.validate_all()
     mock_web_admin.set_webhook.assert_called_once()
+
+@pytest.mark.asyncio
+async def test_validate_network_sync_failure(validator, mock_web_admin):
+    mock_web_admin.get_webhook_status.return_value = WebhookStatus(
+        url="", has_custom_certificate=False, pending_update_count=0,
+        last_error_date=None, last_error_message=None, max_connections=40, ip_address=None
+    )
+    mock_web_admin.set_webhook.side_effect = Exception("Forbidden")
+    report = await validator.validate_all()
+    assert any("Telegram rechazó el Webhook: Forbidden" in msg for msg in report.error_messages)

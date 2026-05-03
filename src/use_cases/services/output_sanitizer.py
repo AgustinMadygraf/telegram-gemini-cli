@@ -2,7 +2,8 @@
 Path: src/use_cases/services/output_sanitizer.py
 """
 
-from typing import List
+import re
+from typing import List, Optional
 
 class OutputSanitizerService:
     """
@@ -10,7 +11,8 @@ class OutputSanitizerService:
     de las respuestas generadas por los motores de IA.
     """
     
-    def __init__(self, noise_keywords: List[str] = None):
+    def __init__(self, noise_keywords: Optional[List[str]] = None):
+        # Lista exhaustiva de ruidos técnicos observados en logs reales
         self.noise_keywords = noise_keywords or [
             "ripgrep is not",
             "falling back to greptool",
@@ -34,43 +36,58 @@ class OutputSanitizerService:
             "address:",
             "port:",
             "econnrefused",
-            "[cause]",
-            "[c",
             "error: connect",
             "typeerror: fetch failed",
-            "at object.processresponse",
-            "errno:",
-            "syscall:"
+            "error executing tool",
+            "path not in workspace",
+            "attempted path",
+            "resolves outside the allowed workspace",
+            "file not found.",
+            "run /mcp list",
+            "run /ide install"
         ]
 
     def sanitize(self, text: str) -> str:
         """
-        Limpia un texto eliminando trazas de stack, logs de infraestructura
-        y mensajes de error internos.
+        Filtra ruidos técnicos, caracteres de control y bloques vacíos.
+        Retorna una cadena limpia o vacía si no hay contenido útil.
         """
         if not text:
             return ""
-            
+
+        # 1. Eliminar caracteres de control ASCII (no imprimibles)
+        # Esto elimina ^B (\x02), campanas (\x07), etc.
+        text = re.sub(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]', '', text)
+        
+        # Eliminar secuencias literales '^B' que a veces aparecen en el stream
+        text = text.replace('^B', '')
+
         lines = text.splitlines()
         clean_lines = []
-        
-        for line in lines:
-            trimmed_line = line.strip()
-            if not trimmed_line:
-                continue
-                
-            # Regla 1: Stacktraces de Node.js / Python
-            if trimmed_line.startswith("at ") or trimmed_line.startswith("at async") or trimmed_line.startswith("stdout>"):
-                continue
-                
-            # Regla 2: Ruido de llaves/corchetes sueltos (típicos de volcados de error JSON)
-            if trimmed_line in ["}", "{", "],", "],", "},", "["]:
-                continue
 
-            # Regla 3: Palabras clave de ruido
-            if any(kw in trimmed_line.lower() for kw in self.noise_keywords):
+        for line in lines:
+            trimmed = line.strip()
+            if not trimmed:
                 continue
                 
-            clean_lines.append(line)
+            # Saltar si la línea contiene ruido técnico
+            lower_line = trimmed.lower()
+            if any(kw in lower_line for kw in self.noise_keywords):
+                continue
+            
+            # Saltar líneas que son solo caracteres de cierre de JSON/bloques
+            if trimmed in ["}", "},", "]", "],", "{", "["]:
+                continue
+                
+            # Si pasa los filtros, la guardamos (manteniendo el indentado original si se desea, 
+            # pero aquí optamos por un trim para evitar bloques vacíos extraños)
+            clean_lines.append(trimmed)
+
+        # 3. Reensamblar
+        result = "\n".join(clean_lines).strip()
         
-        return "\n".join(clean_lines).strip()
+        # 4. Salvaguarda final: si solo queda ruido residual insignificante (ej: ".")
+        if len(result) < 2 and result not in ["?", "!", "i"]:
+            return ""
+            
+        return result
