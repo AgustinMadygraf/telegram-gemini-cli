@@ -19,6 +19,7 @@ Para evitar el error `OSError: [Errno 98] Address already in use`, se ha impleme
 
 El directorio `storage/` es el único lugar donde el bot escribe datos en disco:
 *   `storage/sessions/`: Subdirectorios por `chat_id` que contienen las bases de datos de Gemini CLI y sus contextos.
+*   `storage/workspaces/`: Directorios de trabajo donde Gemini lee/edita archivos. Configurable mediante `GEMINI_WORKSPACE`.
 *   `storage/logs/`: Registros detallados del túnel de Cloudflare (`tunnel.log`) y de la aplicación.
 *   `storage/temp/`: Archivos efímeros generados durante el procesamiento.
 
@@ -28,10 +29,11 @@ El directorio `storage/` es el único lugar donde el bot escribe datos en disco:
 
 ## 🛠️ Deep Health Check
 
-Al iniciar, el `SystemValidatorService` ejecuta una secuencia crítica:
+Al iniciar, el `SystemValidatorService` ejecuta una secuencia crítica con reporte en tiempo real:
 1.  **Binario Gemini**: Comprueba que el CLI está instalado.
 2.  **Auth Ping**: Realiza una consulta mínima (`gemini -p hi`) para verificar que las credenciales son válidas.
-3.  **Network Sync**: Sincroniza el Webhook con Telegram.
+3.  **Workspace Sync**: Si se define un `GEMINI_WORKSPACE`, el sistema asegura su existencia física.
+4.  **Network Sync**: Sincroniza el Webhook con Telegram.
 
 ---
 
@@ -41,7 +43,8 @@ Para garantizar que el bot nunca falle al enviar una respuesta (problema común 
 *   **Librería `markdown`**: Convierte el formato de Gemini a HTML estándar.
 *   **Whitelist Filtering**: Se eliminan etiquetas no soportadas por Telegram, manteniendo solo negritas, cursivas y bloques de código.
 *   **Sanitización**: Se escapan automáticamente los caracteres reservados de HTML (`<`, `>`, `&`).
-*   **Observabilidad de Fallos**: Ante errores `400 Bad Request`, el sistema loguea el payload íntegro para identificar etiquetas HTML mal formadas.
+*   **Observabilidad de Fallos**: Ante errores `400 Bad Request` o fallos de la IA, el sistema loguea el payload íntegro.
+*   **Fragmentación de Mensajes**: Si una respuesta o un error exceden los 4096 caracteres de Telegram, el sistema los divide automáticamente en múltiples mensajes para evitar el error `Message is too long`.
 
 ---
 

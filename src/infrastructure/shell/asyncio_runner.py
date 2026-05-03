@@ -22,5 +22,15 @@ class AsyncioShellRunner(ShellGateway):
             env=full_env,
             cwd=cwd
         )
-        stdout, stderr = await process.communicate()
-        return process.returncode, stdout.decode().strip(), stderr.decode().strip()
+        
+        try:
+            # Añadimos un timeout de 30 segundos para evitar bloqueos infinitos
+            stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=30.0)
+            return process.returncode, stdout.decode().strip(), stderr.decode().strip()
+        except asyncio.TimeoutError:
+            # Si hay timeout, matamos el proceso
+            try:
+                process.kill()
+            except Exception:
+                pass
+            return -1, "", "Error: Tiempo de espera agotado (Timeout 30s) al ejecutar el comando."

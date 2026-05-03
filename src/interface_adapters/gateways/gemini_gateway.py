@@ -104,6 +104,7 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
                 "--output-format", "text"
             ]
             
+            print(f"⌛ Validando credenciales de Gemini (Deep Auth Check)...")
             return_code, stdout, stderr = await self.shell.execute(args, env=env, cwd=self.workspace_path)
             
             if return_code != 0:
