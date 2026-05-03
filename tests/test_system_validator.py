@@ -103,7 +103,9 @@ async def test_validate_network_with_warning(validator, mock_messenger):
         ip_address=None
     )
     report = await validator.validate_all()
-    assert any("Telegram reporta fallo persistente" in msg for msg in report.error_messages)
+    # Ahora, si hay un error previo pero se logra sincronizar, el reporte debe ser OK
+    assert report.is_ok is True
+    assert any("Webhook sincronizado con éxito" in msg for msg in report.info_messages)
 
 @pytest.mark.asyncio
 async def test_validate_without_messenger(mock_tunnel, mock_ai, mock_mcp):

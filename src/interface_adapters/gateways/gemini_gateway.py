@@ -47,7 +47,10 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
         session_path = os.path.join(self.base_session_path, safe_id)
         self.fs.ensure_dir(session_path)
         
-        env = {"GEMINI_CLI_HOME": session_path}
+        env = {
+            "GEMINI_CLI_HOME": session_path,
+            "PATH": os.environ.get("PATH", "")
+        }
         
         if self.auth_method == "api_key" and self.api_key:
             env["GEMINI_API_KEY"] = self.api_key
