@@ -40,5 +40,5 @@
 
 ## Backlog de Mejora Continua
 - [x] Alcanzar el 100% de cobertura de tests en interfaces y puertos.
-- [ ] Implementar sistema de alertas vía Telegram ante fallos críticos de servidores MCP.
+- [x] Implementar sistema de alertas vía Telegram ante fallos críticos de servidores MCP.
 - [ ] Dockerización completa del ecosistema bridge + servidores MCP.

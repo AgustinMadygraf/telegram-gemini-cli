@@ -23,7 +23,8 @@ class SystemValidatorService:
         mcp_validator: MCPValidatorGateway,
         web_admin: WebAdminGateway,
         webhook_url: str,
-        secret_token: Optional[str] = None
+        secret_token: Optional[str] = None,
+        admin_chat_id: Optional[int] = None
     ):
         self.validators = validators
         self.logger = logger
@@ -33,6 +34,7 @@ class SystemValidatorService:
         self.web_admin = web_admin
         self.webhook_url = webhook_url
         self.secret_token = secret_token
+        self.admin_chat_id = admin_chat_id
 
     async def validate_all(self) -> ValidationReport:
         """Valida credenciales, red y túneles devolviendo un reporte detallado."""
@@ -70,6 +72,8 @@ class SystemValidatorService:
             self._report_info(report, "Sistema validado correctamente.")
         else:
             self._report_critical(report, "Se encontraron fallos críticos que impiden el arranque seguro.")
+            if self.admin_chat_id:
+                await self._send_alert_to_admin(report)
             
         return report
 
@@ -119,3 +123,21 @@ class SystemValidatorService:
                     self._report_error(report, f"MCP '{name}': NO DISPONIBLE. {suggestion}")
         except Exception as e:
             self._report_error(report, f"Fallo crítico validando MCPs: {e}")
+
+    async def _send_alert_to_admin(self, report: ValidationReport):
+        """Envía una alerta consolidada al administrador vía Telegram."""
+        header = "🚨 *FALLO CRÍTICO DE SISTEMA*\n\n"
+        errors = "\n".join([f"❌ {msg}" for msg in report.error_messages])
+        criticals = "\n".join([f"🔥 {msg}" for msg in report.critical_messages])
+        
+        message = f"{header}Se han detectado problemas que impiden el arranque:\n\n{errors}\n{criticals}\n\nRevisa los logs del servidor para más detalles."
+        
+        try:
+            await self.messenger.send_message(
+                chat_id=self.admin_chat_id,
+                text=message,
+                parse_mode="Markdown"
+            )
+            self.logger.info(f"Alerta enviada al administrador (ID: {self.admin_chat_id})")
+        except Exception as e:
+            self.logger.error(f"No se pudo enviar la alerta al administrador: {e}")

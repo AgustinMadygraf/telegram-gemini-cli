@@ -105,7 +105,8 @@ validator_service = SystemValidatorService(
     tunnel=tunnel_runner,
     mcp_validator=mcp_validator,
     webhook_url=settings.WEBHOOK_URL,
-    secret_token=settings.WEBHOOK_SECRET_TOKEN
+    secret_token=settings.WEBHOOK_SECRET_TOKEN,
+    admin_chat_id=settings.ALLOWED_CHAT_IDS[0] if settings.ALLOWED_CHAT_IDS else None
 )
 
 markdown_converter = PythonMarkdownAdapter()
