@@ -5,6 +5,7 @@ Path: src/infrastructure/shell/asyncio_runner.py
 import asyncio
 import os
 import re
+import sys
 from typing import List, Tuple, Optional
 from src.use_cases.ports.interfaces import ShellGateway, LoggerPort
 
@@ -14,9 +15,15 @@ class AsyncioShellRunner(ShellGateway):
         # Regex para capturar secuencias de escape ANSI (colores, cursor, etc)
         self._ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
 
-    def _strip_ansi(self, text: str) -> str:
-        """Elimina códigos de escape ANSI de una cadena."""
-        return self._ansi_escape.sub('', text)
+    def _sanitize_line(self, text: str) -> str:
+        """Elimina códigos ANSI y neutraliza retornos de carro internos."""
+        if not text:
+            return ""
+        # 1. Eliminar códigos ANSI
+        text = self._ansi_escape.sub('', text)
+        # 2. Reemplazar retornos de carro (\r) por espacios para evitar que el cursor vuelva atrás
+        text = text.replace('\r', ' ')
+        return text.strip()
 
     async def execute(self, args: List[str], env: Optional[dict] = None, cwd: Optional[str] = None, timeout: float = 30.0, logger: Optional[LoggerPort] = None) -> Tuple[int, str, str]:
         """Ejecución con streaming en tiempo real para observabilidad."""
@@ -46,8 +53,8 @@ class AsyncioShellRunner(ShellGateway):
                 
                 # 1. Decodificar
                 decoded_line = line.decode()
-                # 2. Limpiar ANSI para evitar corrupción en la terminal (efecto escalera)
-                clean_line = self._strip_ansi(decoded_line).strip()
+                # 2. Saneamiento profundo (ANSI + Retornos de carro internos)
+                clean_line = self._sanitize_line(decoded_line)
                 
                 if clean_line:
                     if active_logger:
@@ -65,6 +72,11 @@ class AsyncioShellRunner(ShellGateway):
                 timeout=timeout
             )
             await process.wait()
+            
+            # Restaurar TTY para corregir posibles corrupciones (efecto escalera)
+            if sys.stdout.isatty():
+                os.system('stty sane')
+
             return process.returncode, "\n".join(stdout_chunks), "\n".join(stderr_chunks)
         except asyncio.TimeoutError:
             try:

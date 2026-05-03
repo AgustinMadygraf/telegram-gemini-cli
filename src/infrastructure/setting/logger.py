@@ -22,12 +22,13 @@ def setup_logger():
             record.correlation_id = correlation_id.get() or "SYSTEM"
             return True
 
+    handler = logging.StreamHandler(sys.stdout)
+    handler.terminator = '\r\n'
+    
     logging.basicConfig(
         level=logging.INFO,
         format=log_format,
-        handlers=[
-            logging.StreamHandler(sys.stdout)
-        ]
+        handlers=[handler]
     )
     
     # Aplicar el filtro al handler raíz

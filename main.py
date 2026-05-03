@@ -138,6 +138,9 @@ async def startup_check():
 if __name__ == "__main__":
     os.system('clear')
     os.system('clear')
+    # Restaurar TTY al inicio por si quedó corrupto de una sesión previa
+    if sys.stdout.isatty():
+        os.system('stty sane')
     
     try:
         PortGuard(port=8000, logger=system_logger).clean_port()
