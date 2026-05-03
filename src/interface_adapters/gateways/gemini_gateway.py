@@ -135,22 +135,51 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
             # Para la validación, NO usamos el workspace para evitar errores si está vacío
             return_code, stdout, stderr = await self.shell.execute(args, env=env, cwd=None, timeout=timeout_seconds)
             
+            sanitized_stdout = self._sanitize_output(stdout)
+            sanitized_stderr = self._sanitize_output(stderr)
+
             if return_code != 0:
-                print(f"⚠️  Error en validación Gemini CLI (Código {return_code}): {stderr}")
+                print(f"⚠️  Error en validación Gemini CLI (Código {return_code}): {sanitized_stderr}")
                 return False
             
             # 3. Validar sanidad de la salida (infraestructura)
             # Solo fallamos si hay errores críticos de ejecución o falta de comandos base.
             # Ignoramos avisos de "Ripgrep fallback" o fallos de conexión al IDE (VS Code).
             critical_errors = ["command not found", "fatal error", "invalid api key", "authentication failed"]
-            if any(err in stderr.lower() or err in stdout.lower() for err in critical_errors):
-                print(f"❌ Error crítico detectado en la salida de Gemini: {stdout} {stderr}")
+            if any(err in sanitized_stderr.lower() or err in sanitized_stdout.lower() for err in critical_errors):
+                print(f"❌ Error crítico detectado en la salida de Gemini: {sanitized_stdout} {sanitized_stderr}")
                 return False
 
             return True
         except Exception as e:
             print(f"❌ Excepción en validador Gemini: {str(e)}")
             return False
+
+    def _sanitize_output(self, text: str) -> str:
+        """Limpia el ruido de infraestructura (logs, stacktraces de Node, avisos de Ripgrep)."""
+        lines = text.splitlines()
+        clean_lines = []
+        
+        # Patrones de ruido conocidos
+        noise_patterns = [
+            "ripgrep is not",
+            "falling back to greptool",
+            "ide fetch failed",
+            "failed to connect to ide",
+            "no previous sessions found",
+            "mcp issues detected",
+            "[error]",
+            "[info]",
+            "    at ", # Stack traces de Node.js
+            "  [cause]:"
+        ]
+        
+        for line in lines:
+            # Si la línea no contiene ninguno de los patrones de ruido, la mantenemos
+            if not any(pattern in line.lower() for pattern in noise_patterns):
+                clean_lines.append(line)
+        
+        return "\n".join(clean_lines).strip()
 
     async def ask(self, prompt: str, session_id: str = "latest") -> AIResponse:
         """Ejecuta una consulta al CLI de Gemini delegando la ejecución al shell con aislamiento."""
@@ -159,7 +188,6 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
             env = self._get_env_for_session(session_id)
             
             # Intentamos resumir la sesión anterior en el directorio aislado.
-            # Si es la primera vez, el CLI iniciará una nueva.
             args = [
                 self.binary_path,
                 "--sandbox",
@@ -171,20 +199,24 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
             
             return_code, stdout, stderr = await self.shell.execute(args, env=env, cwd=self.workspace_path)
 
+            # Limpiamos el ruido tanto de stdout como de stderr (a veces Gemini manda logs por stdout)
+            sanitized_stdout = self._sanitize_output(stdout)
+            sanitized_stderr = self._sanitize_output(stderr)
+
             if return_code == 0:
-                return AIResponse(text=stdout, success=True)
+                return AIResponse(text=sanitized_stdout, success=True)
             else:
-                # Si falló por --resume (ej. primera vez), reintentamos sin él
+                # Si falló por --resume, reintentamos sin él
                 if "--resume" in stderr or "no session" in stderr.lower():
                     args.remove("--resume")
                     return_code, stdout, stderr = await self.shell.execute(args, env=env, cwd=self.workspace_path)
                     if return_code == 0:
-                        return AIResponse(text=stdout, success=True)
+                        return AIResponse(text=self._sanitize_output(stdout), success=True)
 
                 return AIResponse(
                     text="", 
                     success=False, 
-                    error_message=stderr
+                    error_message=sanitized_stderr or sanitized_stdout or "Error desconocido"
                 )
         except Exception as e:
             return AIResponse(text="", success=False, error_message=str(e))
