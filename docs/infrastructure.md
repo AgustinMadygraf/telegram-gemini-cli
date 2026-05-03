@@ -89,9 +89,13 @@ source venv/bin/activate
 
 ### 1. Replicar el Entorno de Sesión
 El bot utiliza la variable `GEMINI_CLI_HOME` para aislar cada chat. Para entrar en una sesión específica:
+
 ```bash
-# Reemplaza <ID> por el ID del chat (ej: chat_1234567)
-export GEMINI_CLI_HOME=storage/sessions/chat_<ID>
+# A. Cargar variables del .env a la memoria de tu terminal
+set -a; source .env; set +a
+
+# B. Exportar la ruta de la sesión
+export GEMINI_CLI_HOME=storage/sessions/$CHAT_ID
 ```
 
 ### 2. Ejecutar Consultas Manuales
@@ -113,3 +117,15 @@ export GEMINI_API_KEY="tu_llave_aqui"
 ### 4. Inspección de Archivos
 Puedes ver físicamente los archivos de configuración y base de datos de esa sesión en:
 `ls -la storage/sessions/chat_<ID>/.gemini/`
+### 3. Depuración del Bridge (Modo Detallado)
+Si el bot está teniendo problemas de conexión o errores internos, puedes iniciar el sistema con logs de depuración completos:
+
+```bash
+python main.py --debug
+```
+
+Esto activará:
+*   Visualización de `stdout`/`stderr` de los subprocesos de Gemini.
+*   Detalle de peticiones de Telegram.
+*   Logs extendidos de los servidores MCP.
+*   Sin el flag `--debug`, el sistema opera en modo **silencioso (INFO)** por defecto.

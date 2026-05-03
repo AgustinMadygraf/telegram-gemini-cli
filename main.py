@@ -25,15 +25,28 @@ from src.use_cases.process_message import ProcessMessageUseCase
 from src.use_cases.system_validator import SystemValidatorService
 from src.use_cases.services.resilience_service import CircuitBreakerService
 
-# 0. Configurar Observabilidad Global
+import argparse
+
+# 0. Configurar Argumentos de CLI
+parser = argparse.ArgumentParser(description="Telegram Gemini Bridge")
+parser.add_argument("--debug", action="store_true", help="Activar modo de depuración detallado")
+args_cli, _ = parser.parse_known_args() # Usamos parse_known_args para evitar conflictos con uvicorn
+
+# 0.1 Configurar Observabilidad Global
 setup_logger()
 system_logger = StandardLoggerAdapter("system")
 shell_logger = StandardLoggerAdapter("infrastructure.shell")
-shell_logger.logger.setLevel(logging.DEBUG)
 ai_logger = StandardLoggerAdapter("interface.gemini")
-ai_logger.logger.setLevel(logging.DEBUG)
 telegram_logger = StandardLoggerAdapter("interface.telegram")
 tunnel_logger = StandardLoggerAdapter("infrastructure.tunnel")
+
+# Ajustar niveles según flags de CLI
+log_level = logging.DEBUG if args_cli.debug else logging.INFO
+shell_logger.logger.setLevel(log_level)
+ai_logger.logger.setLevel(log_level)
+if args_cli.debug:
+    system_logger.logger.setLevel(logging.DEBUG)
+    telegram_logger.logger.setLevel(logging.DEBUG)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
