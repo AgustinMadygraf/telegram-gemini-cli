@@ -9,26 +9,19 @@ El sistema "Telegram Gemini CLI Bridge" es un intermediario entre Telegram y `ge
 - **Independencia del OS**: El núcleo no depende de `asyncio` o `os` directamente, sino de gateways de sistema.
 - **Observabilidad Pasiva**: El sistema utiliza un `ValidationReport` para auditoría inicial y un **Middleware de Red** para auditoría operacional.
 
-## 3. Arquitectura Limpia y capas
+## 3. Capas de la Aplicación (Funcional)
 
-### Capa 1: Entidades (src/entities)
-- `ai.py`: Respuestas y estados de la IA.
-- `chat.py`: Estructura de mensajes.
-- `network.py`: Estado del Webhook y del Túnel.
-- `validation.py`: Reportes de salud del sistema.
+### Capa 1: Dominio (Entities)
+Define los objetos de negocio puros: Mensajes de Chat, Respuestas de IA, Reportes de Validación y Modelos de Red.
 
-### Capa 2: Casos de Uso (src/use_cases)
-- **Ports**: `MessengerGateway`, `AIEngineGateway`, `TunnelGateway`, `ShellGateway`, `FileSystemGateway`.
-- **Interactors**: `ProcessMessage`, `SystemValidator`.
+### Capa 2: Aplicación (Use Cases)
+Define la lógica orquestadora: Procesamiento de mensajes, Validación de Salud del Sistema y Gestión de Sesiones. Utiliza **Ports** (interfaces) para comunicarse con el exterior sin conocer implementaciones técnicas.
 
-### Capa 3: Adaptadores de Interfaz (src/interface_adapters)
-- **Controllers**: `TelegramController` (Puro Python).
-- **Gateways**: `TelegramGateway`, `GeminiGateway`, `CloudflareGateway`. Todos libres de lógica de infraestructura y logs.
+### Capa 3: Adaptadores (Interface Adapters)
+Traduce datos entre el dominio y las plataformas externas. Contiene Controladores de entrada, Presentadores de salida y Gateways de comunicación (Telegram, Gemini, Cloudflare).
 
-### Capa 4: Infraestructura (src/infrastructure)
-- **fastapi/**: Servidor Web, Middleware de Observabilidad y traducción HTTP.
-- **shell/**: Implementaciones de `ShellGateway` y `FileSystemGateway` usando `asyncio` y `os`.
-- **setting/**: `config.py` y `logger.py`.
+### Capa 4: Infraestructura
+Implementaciones concretas de bajo nivel: Servidor FastAPI, Ejecución de Shell asíncrona, Sistema de Archivos y Logger.
 
 ## 4. Validación de Salud (Deep Health Check)
 El sistema valida secuencialmente antes del arranque:

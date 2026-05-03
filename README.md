@@ -11,6 +11,7 @@ Bridge de producción asíncrono que vincula Telegram con el ecosistema **Gemini
 *   **🔍 Deep Health Check**: Validación obligatoria al arranque de binarios, red y túneles.
 *   **🚇 Gestión de Túnel Automática**: Integración con `cloudflared` y protección de puertos (`PortGuard`).
 *   **🧪 Suite de Pruebas**: Cobertura del ~89% validando lógica de negocio e infraestructura.
+*   **🧩 Hybrid MCP Architecture**: Integración de herramientas mediante Model Context Protocol, soportando ejecución local (STDIO) y remota (SSE/HTTP) para mayor seguridad.
 
 ---
 
@@ -66,23 +67,15 @@ pytest
 
 ---
 
-## 🏛️ Arquitectura del Sistema
+## 🏛️ Arquitectura y Documentación
 
-El proyecto sigue los principios de **The Clean Architecture**:
+El sistema está diseñado bajo los principios de **Clean Architecture** y **DDD** para garantizar un desacoplamiento total.
 
-1.  **Entities**: Objetos de dominio puros (`ChatMessage`, `AIResponse`).
-2.  **Use Cases**: Lógica de aplicación (`ProcessMessage`, `SystemValidatorService`).
-3.  **Interface Adapters**:
-    *   **Gateways**: Gemini y Telegram.
-    *   **Presenters**: Conversión de Markdown a HTML seguro para Telegram.
-4.  **Infrastructure**: FastAPI, Shell, Logger, Settings.
-
----
-
-## 🔒 Seguridad
-*   **Validación de Webhook**: Uso de `secret_token` en el Header.
-*   **Whitelisting**: Respuesta exclusiva a `ALLOWED_CHAT_IDS`.
-*   **Graceful Shutdown**: Cierre limpio de procesos al recibir `CTRL+C`.
+*   [**Arquitectura**](docs/architecture.md): Capas del sistema, flujo de peticiones y observabilidad.
+*   [**Infraestructura**](docs/infrastructure.md): Gestión de red, túneles, sandbox y almacenamiento.
+*   [**Estrategia MCP**](docs/mcp.md): Integración híbrida de herramientas (STDIO y SSE/HTTP).
+*   [**Autenticación**](docs/authentication.md): Detalles de `api_key`, `google_auth` y `vertex_ai`.
+*   [**Requerimientos (SRS)**](docs/SRS.md): Especificación funcional del sistema.
 
 ---
 *Desarrollado con ❤️ para entornos Gemini avanzados.*

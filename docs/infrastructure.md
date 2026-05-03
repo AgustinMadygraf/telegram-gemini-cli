@@ -43,6 +43,12 @@ El sistema utiliza el modo **Sandbox** nativo de Gemini CLI para proteger el có
 *   **Bloqueo de Escapes**: Aunque la IA intente usar rutas relativas (`../../`), el Sandbox impide el acceso a archivos fuera del workspace.
 *   **Dependencia**: Este modo utiliza aislamiento a nivel de proceso de Linux (Namespaces) y, en algunos entornos, puede requerir Docker activo para máxima compatibilidad.
 
+### Aislamiento de Servidores MCP
+Se aplica una política de **Aislamiento por Transporte**. Los servidores que manejan datos sensibles se ejecutan fuera del host principal, comunicándose únicamente vía herramientas abstractas. 
+
+> [!IMPORTANT]
+> Ver detalles técnicos en [**Estrategia MCP**](mcp.md).
+
 **Nota**: El archivo `.gitignore` está configurado para excluir esta carpeta, asegurando que los datos sensibles de los chats no se suban al repositorio.
 
 ---

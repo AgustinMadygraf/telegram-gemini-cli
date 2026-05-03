@@ -43,6 +43,18 @@ Detalles técnicos y herramientas de bajo nivel.
 
 ---
 
+## 🧩 Integración de Herramientas (MCP)
+
+El sistema expande sus capacidades mediante el **Model Context Protocol (MCP)**. Para garantizar la seguridad de las API Keys de terceros (ej: WooCommerce), se utiliza una arquitectura híbrida:
+
+*   **Servidores de Sistema**: Ejecución vía STDIO para tareas locales.
+*   **Servidores Periféricos**: Ejecución vía SSE/HTTP para APIs externas, aislando los secretos del modelo de IA.
+
+> [!TIP]
+> Consulta la [**Estrategia MCP Detallada**](mcp.md) para más información sobre seguridad y despliegue.
+
+---
+
 ## Observabilidad y Trazabilidad
 
 El sistema no solo loguea peticiones HTTP, sino que aplica una política de **Falla Visible**:
