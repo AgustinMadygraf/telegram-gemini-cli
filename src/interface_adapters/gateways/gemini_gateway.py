@@ -71,19 +71,23 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
         global_config_dir = os.path.expanduser("~/.gemini")
         target_config_dir = os.path.join(session_path, ".gemini")
         
-        if self.fs.exists(global_config_dir) and not self.fs.exists(target_config_dir):
+        if self.fs.exists(global_config_dir):
             import shutil
             try:
-                print(f"🔑 Heredando credenciales desde {global_config_dir}...")
+                # Si ya existe, lo borramos para asegurar una copia limpia y fresca
+                if os.path.exists(target_config_dir):
+                    shutil.rmtree(target_config_dir)
+                
+                print(f"🔑 Sincronizando credenciales desde {global_config_dir}...")
                 # Copiamos la carpeta entera para asegurar OAuth y settings
                 shutil.copytree(
                     global_config_dir, 
                     target_config_dir, 
                     ignore=shutil.ignore_patterns("tmp*", "sessions*", "logs*", "antigravity*")
                 )
-                print(f"✅ Credenciales heredadas.")
-            except Exception:
-                pass # Si falla alguna copia individual, seguimos adelante
+                print(f"✅ Credenciales sincronizadas.")
+            except Exception as e:
+                print(f"⚠️  Error sincronizando credenciales: {e}")
 
     async def validate(self) -> bool:
         """
@@ -106,9 +110,10 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
                 "--output-format", "text"
             ]
             
-            print(f"⌛ Validando credenciales de Gemini (Deep Auth Check)...")
+            print(f"⌛ Validando credenciales de Gemini (Deep Auth Check - Máx 60s)...")
             # Para la validación, NO usamos el workspace para evitar errores si está vacío
-            return_code, stdout, stderr = await self.shell.execute(args, env=env, cwd=None)
+            # Aumentamos a 60s para asegurar que el CLI tenga tiempo de inicializar la sesión temporal
+            return_code, stdout, stderr = await self.shell.execute(args, env=env, cwd=None, timeout=60.0)
             
             if return_code != 0:
                 print(f"⚠️  Error en validación Gemini CLI (Código {return_code}): {stderr}")

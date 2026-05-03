@@ -69,7 +69,7 @@ class TunnelGateway(ABC):
 
 class ShellGateway(ABC):
     @abstractmethod
-    async def execute(self, args: List[str], env: Optional[dict] = None, cwd: Optional[str] = None) -> Tuple[int, str, str]:
+    async def execute(self, args: List[str], env: Optional[dict] = None, cwd: Optional[str] = None, timeout: float = 30.0) -> Tuple[int, str, str]:
         """Ejecuta un comando en el sistema y devuelve (return_code, stdout, stderr)."""
         pass
 
