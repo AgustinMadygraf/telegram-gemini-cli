@@ -91,7 +91,7 @@ class TunnelGateway(ABC):
 
 class ShellGateway(ABC):
     @abstractmethod
-    async def execute(self, args: List[str], env: Optional[dict] = None, cwd: Optional[str] = None, timeout: float = 30.0) -> Tuple[int, str, str]:
+    async def execute(self, args: List[str], env: Optional[dict] = None, cwd: Optional[str] = None, timeout: float = 30.0, logger: Optional[LoggerPort] = None) -> Tuple[int, str, str]:
         """Ejecuta un comando en el sistema y devuelve (return_code, stdout, stderr)."""
         pass
 
@@ -109,6 +109,16 @@ class FileSystemGateway(ABC):
     @abstractmethod
     def ensure_dir(self, path: str) -> None:
         """Asegura que un directorio exista, creándolo si es necesario."""
+        pass
+
+    @abstractmethod
+    def read(self, path: str) -> str:
+        """Lee el contenido de un archivo."""
+        pass
+
+    @abstractmethod
+    def delete(self, path: str) -> None:
+        """Elimina un archivo o directorio."""
         pass
 
 class MarkdownConverterPort(ABC):

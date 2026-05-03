@@ -120,7 +120,7 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
             if self.auth_method == "google_auth":
                 global_config_dir = os.path.expanduser("~/.gemini")
                 if not self.fs.exists(global_config_dir):
-                    print(f"❌ Error: No se encontraron credenciales en {global_config_dir}. Ejecute 'gemini --login' primero.")
+                    self.logger.error(f"❌ Error: No se encontraron credenciales en {global_config_dir}. Ejecute 'gemini --login' primero.")
                     return False
 
             # 2.2 Usamos una sesión especial de validación de sistema
@@ -135,11 +135,12 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
                 "--approval-mode", "auto_edit"
             ]
             
-            timeout_seconds = 90.0
+            timeout_seconds = 120.0
             self.logger.info(f"⌛ Validando credenciales de Gemini (Deep Auth Check - Máx {timeout_seconds}s)")
             
             # Para la validación, NO usamos el workspace para evitar errores si está vacío
-            return_code, stdout, stderr = await self.shell.execute(args, env=env, cwd=None, timeout=timeout_seconds)
+            # Pasamos el logger para ver el progreso real en la CLI durante el arranque
+            return_code, stdout, stderr = await self.shell.execute(args, env=env, cwd=None, timeout=timeout_seconds, logger=self.logger)
             
             sanitized_stdout = self.sanitizer.sanitize(stdout)
             sanitized_stderr = self.sanitizer.sanitize(stderr)

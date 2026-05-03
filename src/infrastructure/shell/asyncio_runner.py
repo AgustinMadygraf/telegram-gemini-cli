@@ -11,11 +11,14 @@ class AsyncioShellRunner(ShellGateway):
     def __init__(self, logger: Optional[LoggerPort] = None):
         self.logger = logger
 
-    async def execute(self, args: List[str], env: Optional[dict] = None, cwd: Optional[str] = None, timeout: float = 30.0) -> Tuple[int, str, str]:
+    async def execute(self, args: List[str], env: Optional[dict] = None, cwd: Optional[str] = None, timeout: float = 30.0, logger: Optional[LoggerPort] = None) -> Tuple[int, str, str]:
         """Ejecución con streaming en tiempo real para observabilidad."""
         full_env = os.environ.copy()
         if env:
             full_env.update(env)
+
+        # Usamos el logger pasado o el de la instancia
+        active_logger = logger or self.logger
 
         process = await asyncio.create_subprocess_exec(
             *args,
@@ -35,9 +38,8 @@ class AsyncioShellRunner(ShellGateway):
                     break
                 decoded_line = line.decode().strip()
                 if decoded_line:
-                    # Usamos el logger si está disponible, si no, fallback a print
-                    if self.logger:
-                        self.logger.debug(f"{prefix} {decoded_line}")
+                    if active_logger:
+                        active_logger.debug(f"{prefix} {decoded_line}")
                     else:
                         print(f"  {prefix} {decoded_line}")
                     collection.append(decoded_line)

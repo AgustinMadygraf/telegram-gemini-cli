@@ -3,6 +3,7 @@ Path: tests/test_telegram_gateway.py
 """
 
 import pytest
+import unittest.mock
 from unittest.mock import AsyncMock, patch, MagicMock
 from src.interface_adapters.gateways.telegram_gateway import TelegramAdapter
 from telegram.error import TelegramError
@@ -97,3 +98,69 @@ async def test_set_webhook_generic_exception(mock_bot, mock_logger):
     adapter = TelegramAdapter(token="fake:token", logger=mock_logger)
     mock_bot.set_webhook.side_effect = Exception("Crash")
     assert await adapter.set_webhook("https://test.com") is False
+
+@pytest.mark.asyncio
+async def test_get_file_path_success(mock_bot, mock_logger):
+    adapter = TelegramAdapter(token="fake:token", logger=mock_logger)
+    mock_file = MagicMock()
+    mock_file.file_path = "https://api.telegram.org/file/bot/123"
+    mock_bot.get_file = AsyncMock(return_value=mock_file)
+    
+    path = await adapter.get_file_path("file_id_123")
+    assert path == "https://api.telegram.org/file/bot/123"
+    mock_bot.get_file.assert_called_with("file_id_123")
+
+@pytest.mark.asyncio
+async def test_get_file_path_exception(mock_bot, mock_logger):
+    adapter = TelegramAdapter(token="fake:token", logger=mock_logger)
+    mock_bot.get_file = AsyncMock(side_effect=Exception("API Error"))
+    
+    path = await adapter.get_file_path("file_id_123")
+    assert path == ""
+    mock_logger.error.assert_called()
+
+@pytest.mark.asyncio
+async def test_download_file_success(mock_logger):
+    adapter = TelegramAdapter(token="fake:token", logger=mock_logger)
+    
+    with patch("httpx.AsyncClient.get") as mock_get, \
+         patch("builtins.open", unittest.mock.mock_open()) as mock_file, \
+         patch("os.makedirs"):
+        
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.content = b"file content"
+        mock_get.return_value = mock_response
+        
+        success = await adapter.download_file("http://remote/path", "local/path")
+        
+        assert success is True
+        mock_get.assert_called_with("http://remote/path")
+        mock_file().write.assert_called_with(b"file content")
+
+@pytest.mark.asyncio
+async def test_download_file_failure(mock_logger):
+    adapter = TelegramAdapter(token="fake:token", logger=mock_logger)
+    
+    with patch("httpx.AsyncClient.get") as mock_get, \
+         patch("os.makedirs"):
+        
+        mock_response = MagicMock()
+        mock_response.status_code = 404
+        mock_get.return_value = mock_response
+        
+        success = await adapter.download_file("http://remote/path", "local/path")
+        
+        assert success is False
+
+@pytest.mark.asyncio
+async def test_download_file_exception(mock_logger):
+    adapter = TelegramAdapter(token="fake:token", logger=mock_logger)
+    
+    with patch("httpx.AsyncClient.get", side_effect=Exception("Network error")), \
+         patch("os.makedirs"):
+        
+        success = await adapter.download_file("http://remote/path", "local/path")
+        
+        assert success is False
+        mock_logger.error.assert_called()
