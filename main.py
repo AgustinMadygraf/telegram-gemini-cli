@@ -7,6 +7,7 @@ import logging
 import sys
 import os
 from src.infrastructure.setting.config import settings
+import asyncio
 from src.infrastructure.setting.logger import setup_logger, StandardLoggerAdapter
 from src.interface_adapters.gateways.gemini_gateway import GeminiCLIAdapter
 from src.interface_adapters.gateways.telegram_gateway import TelegramAdapter
@@ -50,8 +51,7 @@ if args_cli.debug:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # 1. Startup
-    await startup_check()
+    # El startup_check ahora se ejecuta antes de arrancar uvicorn en el main
     yield
     # 2. Shutdown
     system_logger.info("🛑 Apagando sistema de forma segura...")
@@ -138,14 +138,13 @@ app = create_app(
     lifespan=lifespan
 )
 
-async def startup_check():
+async def startup_check() -> bool:
     """Delegación del Deep Health Check al servicio de validación."""
     system_logger.info("🔍 Iniciando Deep Health Check")
     
     report = await validator_service.validate_all()
     
-    if not report.is_ok:
-        sys.exit(1)
+    return report.is_ok
     
     system_logger.info("🚀 Sistema listo para recibir mensajes.")
 
@@ -159,6 +158,12 @@ if __name__ == "__main__":
     try:
         PortGuard(port=8000, logger=system_logger).clean_port()
         tunnel_runner.start_tunnel()
+        
+        # Ejecutar validación profunda antes de arrancar el servidor web
+        if not asyncio.run(startup_check()):
+            system_logger.critical("❌ El sistema no superó el Deep Health Check. Abortando.")
+            sys.exit(1)
+            
         uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
     except KeyboardInterrupt:
         pass

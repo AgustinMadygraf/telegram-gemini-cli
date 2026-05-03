@@ -5,6 +5,8 @@ Path: src/infrastructure/setting/config.py
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List, Optional
 import os
+import secrets
+from dotenv import set_key, load_dotenv
 
 class Settings(BaseSettings):
     TELEGRAM_BOT_TOKEN: str
@@ -31,6 +33,25 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 settings = Settings()
+
+def ensure_secret_token():
+    """Genera y persiste un WEBHOOK_SECRET_TOKEN si no existe."""
+    if not settings.WEBHOOK_SECRET_TOKEN:
+        new_token = secrets.token_hex(32)
+        env_path = ".env"
+        if os.path.exists(env_path):
+            set_key(env_path, "WEBHOOK_SECRET_TOKEN", new_token)
+            # Recargar configuración
+            load_dotenv(env_path, override=True)
+            settings.WEBHOOK_SECRET_TOKEN = new_token
+            print(f"🔑 Se ha generado un nuevo WEBHOOK_SECRET_TOKEN y se ha guardado en {env_path}")
+        else:
+            settings.WEBHOOK_SECRET_TOKEN = new_token
+            print("⚠️ Advertencia: No se encontró archivo .env. El token generado solo durará esta sesión.")
+
 # Asegurar que los directorios existan
 os.makedirs(settings.APP_DATA_DIR, exist_ok=True)
 os.makedirs(settings.DOWNLOADS_PATH, exist_ok=True)
+
+# Ejecutar validación de token al importar
+ensure_secret_token()
