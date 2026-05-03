@@ -65,3 +65,39 @@ async def test_ask_retry_without_resume(adapter, mock_shell):
     assert resp.success is True
     assert resp.text == "respuesta"
     assert mock_shell.execute.call_count == 2
+
+def test_google_auth_inheritance_cleanup(mock_shell, mock_fs):
+    adapter = GeminiCLIAdapter(mock_shell, mock_fs, auth_method="google_auth")
+    with patch("shutil.copytree"), patch("shutil.rmtree") as mock_rm, patch("os.path.exists", return_value=True):
+        adapter._get_env_for_session("user1")
+        mock_rm.assert_called()
+
+def test_vertex_ai_auth(mock_shell, mock_fs):
+    adapter = GeminiCLIAdapter(
+        mock_shell, mock_fs, 
+        auth_method="vertex_ai",
+        vertex_project="p1",
+        vertex_location="l1"
+    )
+    env = adapter._get_env_for_session("user1")
+    assert env["GOOGLE_GENAI_USE_VERTEXAI"] == "true"
+    assert env["GOOGLE_CLOUD_PROJECT"] == "p1"
+    assert env["GOOGLE_CLOUD_LOCATION"] == "l1"
+
+@pytest.mark.asyncio
+async def test_validate_success(mock_shell, mock_fs):
+    adapter = GeminiCLIAdapter(mock_shell, mock_fs)
+    mock_shell.execute.return_value = (0, "hi", "")
+    assert await adapter.validate() is True
+
+@pytest.mark.asyncio
+async def test_ask_failure(adapter, mock_shell):
+    mock_shell.execute.return_value = (1, "", "unknown error")
+    resp = await adapter.ask("prompt")
+    assert resp.success is False
+    assert "unknown error" in resp.error_message
+
+@pytest.mark.asyncio
+async def test_reset_success(adapter, mock_shell):
+    mock_shell.execute.return_value = (0, "", "")
+    assert await adapter.reset("user1") is True

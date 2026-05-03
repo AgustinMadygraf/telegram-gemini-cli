@@ -2,7 +2,7 @@
 Path: src/use_cases/system_validator.py
 """
 
-from src.use_cases.ports.interfaces import CredentialValidatorGateway, MessengerGateway, TunnelGateway
+from src.use_cases.ports.interfaces import CredentialValidatorGateway, MessengerGateway, TunnelGateway, MCPValidatorGateway
 from src.entities.validation import ValidationReport
 from typing import List
 
@@ -12,12 +12,14 @@ class SystemValidatorService:
         validators: List[CredentialValidatorGateway],
         messenger: MessengerGateway = None,
         tunnel: TunnelGateway = None,
+        mcp_validator: MCPValidatorGateway = None,
         webhook_url: str = "",
         secret_token: str = ""
     ):
         self.validators = validators
         self.messenger = messenger
         self.tunnel = tunnel
+        self.mcp_validator = mcp_validator
         self.webhook_url = webhook_url
         self.secret_token = secret_token
 
@@ -50,6 +52,10 @@ class SystemValidatorService:
         # 3. Validar y Sincronizar Red (Webhook)
         if self.messenger:
             await self._validate_network(report)
+        
+        # 4. Validar Ecosistema MCP
+        if self.mcp_validator:
+            await self._validate_mcp(report)
         
         if report.is_ok:
             self._report_info(report, "Sistema validado correctamente.")
@@ -93,3 +99,16 @@ class SystemValidatorService:
                 
         except Exception as e:
             self._report_error(report, f"Fallo de conexión con Telegram: {e}")
+
+    async def _validate_mcp(self, report: ValidationReport):
+        """Valida los servidores MCP y reporta sugerencias de reparación."""
+        self._report_info(report, "Verificando ecosistema de servidores MCP")
+        try:
+            mcp_results = await self.mcp_validator.validate_servers()
+            for name, is_ok, suggestion in mcp_results:
+                if is_ok:
+                    self._report_info(report, f"MCP '{name}': Conectado/Disponible {suggestion}")
+                else:
+                    self._report_error(report, f"MCP '{name}': NO DISPONIBLE. {suggestion}")
+        except Exception as e:
+            self._report_error(report, f"Fallo crítico validando MCPs: {e}")

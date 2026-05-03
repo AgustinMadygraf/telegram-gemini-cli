@@ -11,6 +11,7 @@ from src.interface_adapters.gateways.gemini_gateway import GeminiCLIAdapter
 from src.interface_adapters.gateways.telegram_gateway import TelegramAdapter
 from src.interface_adapters.controllers.telegram_controller import TelegramController
 from src.interface_adapters.presenters.telegram_presenter import TelegramPresenter
+from src.interface_adapters.gateways.mcp_validator_adapter import MCPValidatorAdapter
 from src.infrastructure.fastapi.app import create_app
 from src.infrastructure.setting.logger import setup_logger, StandardLoggerAdapter
 from src.infrastructure.shell.asyncio_runner import AsyncioShellRunner
@@ -59,6 +60,7 @@ tunnel_runner = CloudflareTunnelRunner(
     tunnel_name="gemini-bridge", 
     local_url="http://localhost:8000"
 )
+mcp_validator = MCPValidatorAdapter(fs=file_system)
 
 # El túnel ahora se detiene en el lifespan
 
@@ -67,6 +69,7 @@ validator_service = SystemValidatorService(
     validators=[gemini_gateway, telegram_gateway],
     messenger=telegram_gateway,
     tunnel=tunnel_runner,
+    mcp_validator=mcp_validator,
     webhook_url=settings.WEBHOOK_URL,
     secret_token=settings.WEBHOOK_SECRET_TOKEN
 )

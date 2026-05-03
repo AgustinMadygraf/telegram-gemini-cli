@@ -51,6 +51,15 @@ class CredentialValidatorGateway(ABC):
         """Valida que las credenciales sean correctas."""
         pass
 
+class MCPValidatorGateway(ABC):
+    @abstractmethod
+    async def validate_servers(self) -> List[Tuple[str, bool, str]]:
+        """
+        Valida los servidores MCP configurados.
+        Devuelve una lista de (nombre_servidor, es_valido, sugerencia_reparacion).
+        """
+        pass
+
 class TunnelGateway(ABC):
     @abstractmethod
     async def validate_tunnel(self, url: Optional[str] = None) -> bool:

@@ -55,3 +55,42 @@ async def test_get_webhook_status(mock_bot, mock_logger):
     mock_bot.get_webhook_info.return_value = mock_info
     state = await adapter.get_webhook_status()
     assert state.url == "http://test.com"
+
+@pytest.mark.asyncio
+async def test_validate_success(mock_bot, mock_logger):
+    adapter = TelegramAdapter(token="fake:token", logger=mock_logger)
+    mock_bot.get_me.return_value = MagicMock()
+    assert await adapter.validate() is True
+
+@pytest.mark.asyncio
+async def test_send_message_success(mock_bot, mock_logger):
+    adapter = TelegramAdapter(token="fake:token", logger=mock_logger)
+    mock_bot.send_message.return_value = MagicMock()
+    assert await adapter.send_message(123, "hello") is True
+
+@pytest.mark.asyncio
+async def test_set_webhook_success(mock_bot, mock_logger):
+    adapter = TelegramAdapter(token="fake:token", logger=mock_logger)
+    mock_bot.set_webhook.return_value = True
+    assert await adapter.set_webhook("https://test.com", "token") is True
+
+@pytest.mark.asyncio
+async def test_send_message_generic_exception(mock_bot, mock_logger):
+    adapter = TelegramAdapter(token="fake:token", logger=mock_logger)
+    mock_bot.send_message.side_effect = Exception("Generic error")
+    assert await adapter.send_message(123, "text") is False
+    assert any("Error inesperado" in call.args[0] for call in mock_logger.error.call_args_list)
+
+@pytest.mark.asyncio
+async def test_set_webhook_telegram_error(mock_bot, mock_logger):
+    adapter = TelegramAdapter(token="fake:token", logger=mock_logger)
+    mock_bot.set_webhook.side_effect = TelegramError("Conflict")
+    with pytest.raises(TelegramError):
+        await adapter.set_webhook("https://test.com")
+    assert any("Error configurando Webhook" in call.args[0] for call in mock_logger.error.call_args_list)
+
+@pytest.mark.asyncio
+async def test_set_webhook_generic_exception(mock_bot, mock_logger):
+    adapter = TelegramAdapter(token="fake:token", logger=mock_logger)
+    mock_bot.set_webhook.side_effect = Exception("Crash")
+    assert await adapter.set_webhook("https://test.com") is False

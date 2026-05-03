@@ -22,8 +22,9 @@
 - [x] Cambiar `ALLOWED_CHAT_IDS` por ID real del usuario.
 - [x] Implementar comando `/reset` (limpieza de contexto).
 - [x] Manejo de sesiones multi-usuario.
-### Fase 5: Ecosistema MCP (En curso)
-- [ ] Implementar `MCPValidator` en el `SystemValidatorService`.
-- [ ] Verificación de binarios STDIO declarados en `settings.json`.
-- [ ] Health check de endpoints SSE/HTTP.
-- [ ] Generación de Reporte de Acción (Sugerencias de reparación).
+
+### Fase 5: Ecosistema MCP (Completado)
+- [x] Implementar `MCPValidator` en el `SystemValidatorService`.
+- [x] Verificación de binarios STDIO declarados en `settings.json`.
+- [x] Health check de endpoints SSE/HTTP.
+- [x] Generación de Reporte de Acción (Sugerencias de reparación).
