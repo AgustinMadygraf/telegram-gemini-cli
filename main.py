@@ -99,18 +99,20 @@ app = create_app(
 
 async def startup_check():
     """Delegación del Deep Health Check al servicio de validación."""
+    # Imprimimos inicio inmediato
+    print("🔍 Iniciando Deep Health Check...")
+    
+    # Pasamos el reporte pero el validador ahora será más ruidoso
     report = await validator_service.validate_all()
     
-    # Procesar resultados según el reporte
-    for msg in report.info_messages:
-        print(f"✅ {msg}")
-    for msg in report.error_messages:
-        print(f"⚠️  Error: {msg}")
-    for msg in report.critical_messages:
-        print(f"❌ CRÍTICO: {msg}")
-
     if not report.is_ok:
+        for msg in report.error_messages:
+            print(f"⚠️  Error: {msg}")
+        for msg in report.critical_messages:
+            print(f"❌ CRÍTICO: {msg}")
         sys.exit(1)
+    
+    print("🚀 Sistema listo para recibir mensajes.")
 
 if __name__ == "__main__":
     try:

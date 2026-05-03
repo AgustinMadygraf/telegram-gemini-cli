@@ -24,61 +24,72 @@ class SystemValidatorService:
     async def validate_all(self) -> ValidationReport:
         """Valida credenciales, red y túneles devolviendo un reporte detallado."""
         report = ValidationReport()
-        report.add_info("Iniciando validación de sistema (Deep Health Check)...")
+        self._report_info(report, "Iniciando validación de sistema (Deep Health Check)...")
 
         # 0. Reportar Estrategia de IA
         from src.interface_adapters.gateways.gemini_gateway import GeminiCLIAdapter
         for v in self.validators:
             if isinstance(v, GeminiCLIAdapter):
-                report.add_info(f"Estrategia de IA: {v.auth_method.upper()}")
+                self._report_info(report, f"Estrategia de IA: {v.auth_method.upper()}")
         
         # 1. Validar Credenciales (Gemini, Telegram)
         for validator in self.validators:
             if not await validator.validate():
-                report.add_error(f"Fallo en validador de credenciales: {validator.__class__.__name__}")
+                self._report_error(report, f"Fallo en validador de credenciales: {validator.__class__.__name__}")
         
         # 2. Validar Túnel (Cloudflare)
         if self.tunnel:
-            report.add_info(f"Validando estado del túnel para: {self.webhook_url}")
+            self._report_info(report, f"Validando estado del túnel para: {self.webhook_url}")
             if not await self.tunnel.validate_tunnel(url=self.webhook_url):
                 # FLEXIBILIDAD: Solo es un error crítico si estamos en producción (podría ser un flag)
                 # Por ahora, lo bajamos a advertencia para permitir el desarrollo.
-                report.add_info("⚠️  Túnel no detectado o token faltante. Se permite continuar en modo degradado.")
+                self._report_info(report, "⚠️  Túnel no detectado o token faltante. Se permite continuar en modo degradado.")
         else:
-            report.add_info("No se ha configurado un gestor de túneles.")
+            self._report_info(report, "No se ha configurado un gestor de túneles.")
 
         # 3. Validar y Sincronizar Red (Webhook)
         if self.messenger:
             await self._validate_network(report)
         
         if report.is_ok:
-            report.add_info("Sistema validado correctamente.")
+            self._report_info(report, "Sistema validado correctamente.")
         else:
-            report.add_critical("Se encontraron fallos críticos que impiden el arranque seguro.")
+            self._report_critical(report, "Se encontraron fallos críticos que impiden el arranque seguro.")
             
         return report
 
+    def _report_info(self, report, msg):
+        report.add_info(msg)
+        print(f"✅ {msg}")
+
+    def _report_error(self, report, msg):
+        report.add_error(msg)
+        # No imprimimos error aquí porque main.py lo hará al final si falla
+
+    def _report_critical(self, report, msg):
+        report.add_critical(msg)
+
     async def _validate_network(self, report: ValidationReport):
         """Valida y sincroniza la salud del webhook en Telegram."""
-        report.add_info("Verificando salud del Webhook en Telegram...")
+        self._report_info(report, "Verificando salud del Webhook en Telegram...")
         try:
             status = await self.messenger.get_webhook_status()
             
             if status.url != self.webhook_url or status.last_error_message:
-                report.add_info(f"Sincronizando Webhook (Limpieza de estado): '{self.webhook_url}'")
+                self._report_info(report, f"Sincronizando Webhook (Limpieza de estado): '{self.webhook_url}'")
                 try:
                     await self.messenger.set_webhook(
                         url=self.webhook_url, 
                         secret_token=self.secret_token
                     )
-                    report.add_info("Webhook sincronizado con éxito.")
+                    self._report_info(report, "Webhook sincronizado con éxito.")
                 except Exception as e:
-                    report.add_error(f"Telegram rechazó el Webhook: {str(e)}")
+                    self._report_error(report, f"Telegram rechazó el Webhook: {str(e)}")
             else:
-                report.add_info(f"Webhook ya está sincronizado en: {status.url}")
+                self._report_info(report, f"Webhook ya está sincronizado en: {status.url}")
             
             if status.last_error_message:
-                report.add_info(f"Aviso de Telegram: {status.last_error_message}")
+                self._report_info(report, f"Aviso de Telegram: {status.last_error_message}")
                 
         except Exception as e:
-            report.add_error(f"Fallo de conexión con Telegram: {e}")
+            self._report_error(report, f"Fallo de conexión con Telegram: {e}")

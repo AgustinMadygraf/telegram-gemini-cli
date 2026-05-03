@@ -31,7 +31,12 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
         self.api_key = api_key
         self.vertex_project = vertex_project
         self.vertex_location = vertex_location
-        self.workspace_path = workspace_path
+        # Normalizamos: si es un string vacío, lo tratamos como None
+        self.workspace_path = workspace_path if workspace_path and workspace_path.strip() else None
+        
+        if self.workspace_path:
+            self.fs.ensure_dir(self.workspace_path)
+        
         # Centralizamos en la nueva carpeta storage
         self.base_session_path = os.path.abspath("storage/sessions")
         self.fs.ensure_dir(self.base_session_path)
@@ -101,9 +106,12 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
             
             return_code, stdout, stderr = await self.shell.execute(args, env=env, cwd=self.workspace_path)
             
-            # Si el código es 0, la autenticación y el binario están OK
+            if return_code != 0:
+                print(f"⚠️  Error en validación Gemini CLI (Código {return_code}): {stderr}")
+            
             return return_code == 0
-        except Exception:
+        except Exception as e:
+            print(f"❌ Excepción en validador Gemini: {str(e)}")
             return False
 
     async def ask(self, prompt: str, session_id: str = "latest") -> AIResponse:
