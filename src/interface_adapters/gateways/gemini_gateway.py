@@ -197,7 +197,7 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
                 "--approval-mode", "auto_edit"
             ]
             
-            return_code, stdout, stderr = await self.shell.execute(args, env=env, cwd=self.workspace_path)
+            return_code, stdout, stderr = await self.shell.execute(args, env=env, cwd=self.workspace_path, timeout=180.0)
 
             # Limpiamos el ruido tanto de stdout como de stderr (a veces Gemini manda logs por stdout)
             sanitized_stdout = self._sanitize_output(stdout)
@@ -209,7 +209,7 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
                 # Si falló por --resume, reintentamos sin él
                 if "--resume" in stderr or "no session" in stderr.lower():
                     args.remove("--resume")
-                    return_code, stdout, stderr = await self.shell.execute(args, env=env, cwd=self.workspace_path)
+                    return_code, stdout, stderr = await self.shell.execute(args, env=env, cwd=self.workspace_path, timeout=180.0)
                     if return_code == 0:
                         return AIResponse(text=self._sanitize_output(stdout), success=True)
 
