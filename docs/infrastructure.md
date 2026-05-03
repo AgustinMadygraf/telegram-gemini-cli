@@ -15,6 +15,12 @@ Para evitar el error `OSError: [Errno 98] Address already in use`, se ha impleme
 *   **Acción**: Al arrancar, escanea el puerto 8000 (o el configurado). Si detecta un proceso intruso, ejecuta un `kill` limpio (SIGTERM) para liberar el recurso.
 *   **Beneficio**: Permite reinicios rápidos del bot sin tener que buscar y matar procesos manualmente en la terminal.
 
+## ⏱️ Control de Tiempos (Shell Timeouts)
+
+Para garantizar que el bot no se quede congelado si un proceso externo (como el CLI de Gemini) falla o se bloquea:
+*   **Límite Global**: Todos los comandos ejecutados a través de `AsyncioShellRunner` tienen un **timeout de 30 segundos**.
+*   **Acción**: Si el comando excede este tiempo, el proceso es finalizado (`kill`) y el sistema reporta un error de tiempo agotado.
+
 ## 📂 Sistema de Almacenamiento (`storage/`)
 
 El directorio `storage/` es el único lugar donde el bot escribe datos en disco:
@@ -29,11 +35,11 @@ El directorio `storage/` es el único lugar donde el bot escribe datos en disco:
 
 ## 🛠️ Deep Health Check
 
-Al iniciar, el `SystemValidatorService` ejecuta una secuencia crítica con reporte en tiempo real:
+Al iniciar, el `SystemValidatorService` ejecuta una secuencia crítica con reporte **en tiempo real** en la consola:
 1.  **Binario Gemini**: Comprueba que el CLI está instalado.
-2.  **Auth Ping**: Realiza una consulta mínima (`gemini -p hi`) para verificar que las credenciales son válidas.
-3.  **Workspace Sync**: Si se define un `GEMINI_WORKSPACE`, el sistema asegura su existencia física.
-4.  **Network Sync**: Sincroniza el Webhook con Telegram.
+2.  **Auth Ping (Deep Auth Check)**: Realiza una consulta mínima (`gemini -p hi`) con un timeout de seguridad.
+3.  **Workspace Sync**: Si se define un `GEMINI_WORKSPACE`, el sistema asegura su existencia física o la crea automáticamente.
+4.  **Network Sync**: Sincroniza el Webhook con Telegram y verifica el estado del túnel.
 
 ---
 

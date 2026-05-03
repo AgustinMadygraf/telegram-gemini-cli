@@ -31,10 +31,10 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
         self.api_key = api_key
         self.vertex_project = vertex_project
         self.vertex_location = vertex_location
-        # Normalizamos: si es un string vacío, lo tratamos como None
         self.workspace_path = workspace_path if workspace_path and workspace_path.strip() else None
         
         if self.workspace_path:
+            print(f"📂 Workspace configurado en: {self.workspace_path}")
             self.fs.ensure_dir(self.workspace_path)
         
         # Centralizamos en la nueva carpeta storage
@@ -74,12 +74,14 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
         if self.fs.exists(global_config_dir) and not self.fs.exists(target_config_dir):
             import shutil
             try:
+                print(f"🔑 Heredando credenciales desde {global_config_dir}...")
                 # Copiamos la carpeta entera para asegurar OAuth y settings
                 shutil.copytree(
                     global_config_dir, 
                     target_config_dir, 
                     ignore=shutil.ignore_patterns("tmp*", "sessions*", "logs*", "antigravity*")
                 )
+                print(f"✅ Credenciales heredadas.")
             except Exception:
                 pass # Si falla alguna copia individual, seguimos adelante
 
