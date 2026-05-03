@@ -4,12 +4,19 @@ Path: src/infrastructure/shell/asyncio_runner.py
 
 import asyncio
 import os
+import re
 from typing import List, Tuple, Optional
 from src.use_cases.ports.interfaces import ShellGateway, LoggerPort
 
 class AsyncioShellRunner(ShellGateway):
     def __init__(self, logger: Optional[LoggerPort] = None):
         self.logger = logger
+        # Regex para capturar secuencias de escape ANSI (colores, cursor, etc)
+        self._ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+
+    def _strip_ansi(self, text: str) -> str:
+        """Elimina códigos de escape ANSI de una cadena."""
+        return self._ansi_escape.sub('', text)
 
     async def execute(self, args: List[str], env: Optional[dict] = None, cwd: Optional[str] = None, timeout: float = 30.0, logger: Optional[LoggerPort] = None) -> Tuple[int, str, str]:
         """Ejecución con streaming en tiempo real para observabilidad."""
@@ -36,11 +43,17 @@ class AsyncioShellRunner(ShellGateway):
                 line = await stream.readline()
                 if not line:
                     break
-                decoded_line = line.decode().strip()
-                if decoded_line:
+                
+                # 1. Decodificar
+                decoded_line = line.decode()
+                # 2. Limpiar ANSI para evitar corrupción en la terminal (efecto escalera)
+                clean_line = self._strip_ansi(decoded_line).strip()
+                
+                if clean_line:
                     if active_logger:
-                        active_logger.debug(f"{prefix} {decoded_line}")
-                    collection.append(decoded_line)
+                        active_logger.debug(f"{prefix} {clean_line}")
+                    # Guardamos la versión sin saltos de línea pero con contenido útil
+                    collection.append(clean_line)
 
         try:
             # Ejecutamos la lectura de ambos flujos en paralelo con el timeout
