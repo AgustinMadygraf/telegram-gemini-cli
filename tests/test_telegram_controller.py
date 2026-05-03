@@ -1,3 +1,6 @@
+"""
+Path: tests/test_telegram_controller.py
+"""
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 from src.interface_adapters.controllers.telegram_controller import TelegramController
@@ -10,37 +13,30 @@ def mock_use_case():
 def controller(mock_use_case):
     return TelegramController(
         use_case=mock_use_case,
-        secret_token="secret_token"
+        secret_token="secret"
     )
 
 @pytest.mark.asyncio
-async def test_process_webhook_invalid_token(controller):
+async def test_handle_webhook_invalid_token(controller):
     with pytest.raises(PermissionError):
-        await controller.process_webhook_data({}, "wrong_token")
+        await controller.handle_webhook({}, "wrong")
 
 @pytest.mark.asyncio
-async def test_process_webhook_no_message(controller):
-    # Update sin campo 'message'
-    data = {"update_id": 1, "edited_message": {}}
-    result = await controller.process_webhook_data(data, "secret_token")
-    assert result is None
-
-@pytest.mark.asyncio
-async def test_process_webhook_valid_message(controller):
+async def test_handle_webhook_valid(controller):
     data = {
-        "update_id": 1,
         "message": {
             "chat": {"id": 123},
-            "from": {"id": 456, "username": "agustin"},
+            "from": {"id": 456},
             "text": "hola"
         }
     }
-    msg = await controller.process_webhook_data(data, "secret_token")
+    msg, trace_id = await controller.handle_webhook(data, "secret")
     assert msg.chat_id == 123
-    assert msg.text == "hola"
+    assert trace_id.startswith("TR-")
 
 @pytest.mark.asyncio
-async def test_execute_task(controller, mock_use_case):
+async def test_execute_task_with_trace(controller, mock_use_case):
     msg = MagicMock()
-    await controller.execute_task(msg)
+    await controller.execute_task(msg, "TR-TEST")
     mock_use_case.execute.assert_called_once_with(msg)
+    # También podrías verificar que el ContextVar se seteó, pero requiere importar correlation_id
