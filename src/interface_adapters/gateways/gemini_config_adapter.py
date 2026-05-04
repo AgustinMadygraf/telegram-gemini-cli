@@ -37,7 +37,11 @@ class GeminiLocalConfigAdapter(GeminiConfigGateway):
                 if args:
                     script_path = args[0]
                     if os.path.isabs(script_path):
-                        paths.add(os.path.dirname(script_path))
+                        dir_path = os.path.dirname(script_path)
+                        if self.fs.exists(dir_path):
+                            paths.add(dir_path)
+                        else:
+                            self.logger.warning(f"⚠️ MCP '{name}' ignorado para sandbox: Directorio no encontrado {dir_path}")
             
             return list(paths)
         except Exception as e:
