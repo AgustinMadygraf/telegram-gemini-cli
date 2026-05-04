@@ -227,6 +227,11 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
                     self.logger.warning(f"⚠️ Error 500 transitorio detectado")
                     return AIResponse(text="", success=False, error_message=error_msg)
 
+                if return_code == -1 or "timeout" in combined_raw:
+                    error_msg = "⏱️ La consulta excedió el tiempo máximo (180s). Probá con una pregunta más específica."
+                    self.logger.warning(f"⚠️ Timeout detectado en ejecución Gemini CLI")
+                    return AIResponse(text="", success=False, error_message=error_msg)
+
                 if stdout:
                     self.logger.debug("🔍 [DEBUG RAW OUTPUT] La respuesta fue vaciada. Contenido original:")
                     self.logger.debug("-" * 40)
