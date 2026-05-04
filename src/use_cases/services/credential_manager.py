@@ -27,14 +27,16 @@ class CredentialSyncService:
             self.logger.warning(f"⚠️ No se encontró directorio global de credenciales en {global_config_dir}")
             return
 
-        # Sincronización selectiva (Copy only if missing)
-        if not self.fs.exists(target_config_dir):
+        # Sincronización selectiva: verificamos que el archivo esencial exista.
+        # El directorio .gemini puede ser creado por Gemini CLI sin los archivos de auth.
+        target_settings = os.path.join(target_config_dir, "settings.json")
+        if not self.fs.exists(target_settings):
             try:
                 self.logger.info(f"🔑 Sincronizando identidad OAuth hacia {target_config_dir}")
                 self.fs.copy_directory(
                     global_config_dir, 
                     target_config_dir, 
-                    ignore_patterns=["tmp*", "sessions*", "logs*", "antigravity*"]
+                    ignore_patterns=["tmp*", "sessions*", "logs*", "antigravity*", "history*"]
                 )
             except Exception as e:
                 self.logger.error(f"❌ Error crítico copiando credenciales: {e}")
