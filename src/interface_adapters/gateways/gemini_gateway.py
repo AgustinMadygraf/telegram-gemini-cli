@@ -138,17 +138,24 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
             
             sanitized_stdout = self.sanitizer.sanitize(stdout)
             sanitized_stderr = self.sanitizer.sanitize(stderr)
-
-            if return_code != 0:
-                self.logger.warning(f"⚠️  Error en validación Gemini CLI (Código {return_code}): {sanitized_stderr}")
-                return False
             
-            # 3. Validar sanidad de la salida (infraestructura)
-            # Solo fallamos si hay errores críticos de ejecución o falta de comandos base.
-            # Ignoramos avisos de "Ripgrep fallback" o fallos de conexión al IDE (VS Code).
+            combined_output = f"{stdout} {stderr}".lower()
+
+            # 3. Errores críticos de autenticación/configuración → FATAL (bloquean arranque)
             critical_errors = ["command not found", "fatal error", "invalid api key", "authentication failed"]
-            if any(err in sanitized_stderr.lower() or err in sanitized_stdout.lower() for err in critical_errors):
+            if any(err in combined_output for err in critical_errors):
                 self.logger.error(f"❌ Error crítico detectado en la salida de Gemini: {sanitized_stdout} {sanitized_stderr}")
+                return False
+
+            # 4. Errores transitorios del backend (500, timeouts) → WARNING (permiten arranque)
+            transient_indicators = ["status: 500", "internal error", "timeout"]
+            is_transient = any(ind in combined_output for ind in transient_indicators) or return_code == -1
+            
+            if return_code != 0:
+                if is_transient:
+                    self.logger.warning(f"⚠️ Error transitorio en validación (Código {return_code}). El backend de Google puede estar inestable. Continuando arranque.")
+                    return True
+                self.logger.warning(f"⚠️  Error en validación Gemini CLI (Código {return_code}): {sanitized_stderr}")
                 return False
 
             return True
@@ -167,7 +174,17 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
         """
         env = self._get_env_for_session(session)
         
-        args = [self.binary_path, "--prompt", prompt, "--sandbox", "--approval-mode", "yolo"]
+        # Obtener argumentos extra desde el proveedor de configuración
+        include_dirs = self.config_gateway.get_include_directories()
+        extra_args = []
+        for path in include_dirs:
+            extra_args.extend(["--include-directories", path])
+
+        # --sandbox aísla el filesystem e impide acceso a directorios externos (MCPs).
+        # Solo se activa si no hay include-directories que requieran acceso externo.
+        args = [self.binary_path, "--prompt", prompt, "--approval-mode", "yolo"]
+        if not extra_args:
+            args.append("--sandbox")
         
         # Si hay sesión, intentamos resumirla
         if session:
@@ -177,11 +194,6 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
             args.extend(attachments)
 
         try:
-            # Obtener argumentos extra desde el proveedor de configuración
-            include_dirs = self.config_gateway.get_include_directories()
-            extra_args = []
-            for path in include_dirs:
-                extra_args.extend(["--include-directories", path])
             
             # Log de depuración para ver los argumentos finales
             self.logger.debug(f"📝 Comando Gemini: {' '.join(args + extra_args)}")

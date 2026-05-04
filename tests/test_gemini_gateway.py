@@ -88,6 +88,20 @@ async def test_ask_uses_config_gateway(adapter, mock_shell, mock_config_gateway)
     cli_args = args[0]
     assert "--include-directories" in cli_args
     assert "/mcp/path" in cli_args
+    # --sandbox es incompatible con --include-directories (aísla el filesystem)
+    assert "--sandbox" not in cli_args
+
+@pytest.mark.asyncio
+async def test_ask_uses_sandbox_when_no_include_dirs(adapter, mock_shell, mock_config_gateway):
+    """Sin include-directories, --sandbox debe estar presente para aislar la ejecución."""
+    mock_config_gateway.get_include_directories.return_value = []
+    mock_shell.execute.return_value = (0, "ok", "")
+    await adapter.ask("test prompt")
+    
+    args, kwargs = mock_shell.execute.call_args
+    cli_args = args[0]
+    assert "--sandbox" in cli_args
+    assert "--include-directories" not in cli_args
 
 @pytest.mark.asyncio
 async def test_validate_success(mock_shell, mock_fs, mock_logger, mock_sanitizer, mock_credential_service, mock_config_gateway):
@@ -101,5 +115,30 @@ async def test_validate_success(mock_shell, mock_fs, mock_logger, mock_sanitizer
 @pytest.mark.asyncio
 async def test_validate_infra_error_in_output(mock_shell, mock_fs, mock_logger, mock_sanitizer, mock_credential_service, mock_config_gateway):
     adapter = GeminiCLIAdapter(mock_shell, mock_fs, mock_logger, mock_sanitizer, mock_credential_service, mock_config_gateway)
-    mock_shell.execute.return_value = (0, "fatal error: authentication failed", "")
+    mock_shell.execute.side_effect = [
+        (0, "/usr/bin/rg", ""),
+        (0, "fatal error: authentication failed", "")
+    ]
     assert await adapter.validate() is False
+
+@pytest.mark.asyncio
+async def test_validate_transient_500_allows_startup(mock_shell, mock_fs, mock_logger, mock_sanitizer, mock_credential_service, mock_config_gateway):
+    """Un error 500 de Google es transitorio y no debe bloquear el arranque."""
+    adapter = GeminiCLIAdapter(mock_shell, mock_fs, mock_logger, mock_sanitizer, mock_credential_service, mock_config_gateway)
+    mock_shell.execute.side_effect = [
+        (0, "/usr/bin/rg", ""),
+        (1, 'status: 500 Internal error encountered.', "")
+    ]
+    assert await adapter.validate() is True
+    mock_logger.warning.assert_called()
+
+@pytest.mark.asyncio
+async def test_validate_timeout_allows_startup(mock_shell, mock_fs, mock_logger, mock_sanitizer, mock_credential_service, mock_config_gateway):
+    """Un timeout (-1) es transitorio y no debe bloquear el arranque."""
+    adapter = GeminiCLIAdapter(mock_shell, mock_fs, mock_logger, mock_sanitizer, mock_credential_service, mock_config_gateway)
+    mock_shell.execute.side_effect = [
+        (0, "/usr/bin/rg", ""),
+        (-1, "", "Error: Tiempo de espera agotado (Timeout 120.0s)")
+    ]
+    assert await adapter.validate() is True
+    mock_logger.warning.assert_called()
