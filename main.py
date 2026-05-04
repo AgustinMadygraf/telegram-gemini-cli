@@ -61,6 +61,8 @@ async def lifespan(app: FastAPI):
 
 from src.use_cases.services.output_sanitizer import OutputSanitizerService
 from src.use_cases.services.credential_manager import CredentialSyncService
+from src.use_cases.services.attachment_manager import AttachmentManager
+from src.use_cases.services.command_dispatcher import CommandDispatcher
 from src.infrastructure.sqlite3.sqlite_history import SQLiteHistoryAdapter
 from src.interface_adapters.gateways.gemini_config_adapter import GeminiLocalConfigAdapter
 
@@ -77,6 +79,8 @@ circuit_breaker = CircuitBreakerService(failure_threshold=3, recovery_timeout=60
 # 1.1 Servicios de Dominio / Soporte
 credential_manager = CredentialSyncService(fs=file_system, logger=ai_logger)
 config_provider = GeminiLocalConfigAdapter(fs=file_system, logger=ai_logger)
+attachment_manager = AttachmentManager(file_gateway=telegram_adapter, logger=ai_logger, download_path=settings.DOWNLOADS_PATH)
+command_dispatcher = CommandDispatcher(ai_engine=gemini_gateway, messenger=telegram_adapter, logger=ai_logger)
 
 # 2. Instanciar Adaptadores de Infraestructura (Gateways)
 gemini_gateway = GeminiCLIAdapter(
@@ -126,12 +130,13 @@ telegram_presenter = TelegramPresenter(
 )
 
 process_message_use_case = ProcessMessageUseCase(
-    ai_engine=gemini_gateway,
-    messenger=telegram_adapter, # Implementa MessageGateway
-    file_gateway=telegram_adapter, # Implementa FileGateway
+    ai_engine=gemini_gateway, 
+    messenger=telegram_adapter, 
     presenter=telegram_presenter,
     logger=StandardLoggerAdapter("use_case.process_message"),
     allowed_users=settings.ALLOWED_CHAT_IDS,
+    attachment_manager=attachment_manager,
+    command_dispatcher=command_dispatcher,
     history=history_adapter,
     circuit_breaker=circuit_breaker
 )
