@@ -45,7 +45,9 @@ class CredentialSyncService:
 
     def _sanitize_session_settings(self, config_dir: str) -> None:
         """
-        Limpia el settings.json de la sesión eliminando MCPs con paths inexistentes.
+        Elimina la sección mcpServers del settings.json de la sesión.
+        Esto obliga a Gemini CLI a usar únicamente los servidores que nosotros
+        le pasamos por línea de comandos (ya validados).
         """
         import json
         settings_path = os.path.join(config_dir, "settings.json")
@@ -57,22 +59,9 @@ class CredentialSyncService:
             data = json.loads(content)
             
             if "mcpServers" in data:
-                original_count = len(data["mcpServers"])
-                valid_mcp = {}
-                
-                for name, config in data["mcpServers"].items():
-                    args = config.get("args", [])
-                    if args and os.path.isabs(args[0]):
-                        if os.path.exists(args[0]): # Usamos os.path directo para velocidad
-                            valid_mcp[name] = config
-                        else:
-                            self.logger.debug(f"🧹 Eliminando MCP inválido de la sesión: {name}")
-                
-                data["mcpServers"] = valid_mcp
-                
-                if len(valid_mcp) != original_count:
-                    self.fs.write_text(settings_path, json.dumps(data, indent=2))
-                    self.logger.info(f"✅ settings.json saneado ({len(valid_mcp)}/{original_count} MCPs válidos)")
+                del data["mcpServers"]
+                self.fs.write_text(settings_path, json.dumps(data, indent=2))
+                self.logger.info("🧹 Configuración de MCPs globales eliminada de la sesión (se usará inyección por CLI)")
                     
         except Exception as e:
-            self.logger.warning(f"⚠️ No se pudo sanear settings.json de la sesión: {e}")
+            self.logger.warning(f"⚠️ No se pudo limpiar settings.json de la sesión: {e}")
