@@ -60,7 +60,9 @@ async def lifespan(app: FastAPI):
     tunnel_runner.stop_tunnel()
 
 from src.use_cases.services.output_sanitizer import OutputSanitizerService
+from src.use_cases.services.credential_manager import CredentialSyncService
 from src.infrastructure.sqlite3.sqlite_history import SQLiteHistoryAdapter
+from src.interface_adapters.gateways.gemini_config_adapter import GeminiLocalConfigAdapter
 
 # 1. Instanciar Infraestructura de Bajo Nivel (OS)
 shell_runner = AsyncioShellRunner(logger=shell_logger)
@@ -72,12 +74,18 @@ history_adapter = SQLiteHistoryAdapter(
 )
 circuit_breaker = CircuitBreakerService(failure_threshold=3, recovery_timeout=60)
 
+# 1.1 Servicios de Dominio / Soporte
+credential_manager = CredentialSyncService(fs=file_system, logger=ai_logger)
+config_provider = GeminiLocalConfigAdapter(fs=file_system, logger=ai_logger)
+
 # 2. Instanciar Adaptadores de Infraestructura (Gateways)
 gemini_gateway = GeminiCLIAdapter(
     shell=shell_runner, 
     fs=file_system,
     logger=ai_logger,
     sanitizer=sanitizer,
+    credential_service=credential_manager,
+    config_gateway=config_provider,
     binary_path=settings.GEMINI_BINARY_PATH,
     auth_method=settings.GEMINI_AUTH_METHOD,
     api_key=settings.GEMINI_API_KEY,

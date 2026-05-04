@@ -9,10 +9,12 @@ from src.use_cases.ports.interfaces import (
     CredentialValidatorGateway,
     ShellGateway,
     FileSystemGateway,
-    LoggerPort
+    LoggerPort,
+    GeminiConfigGateway
 )
 from src.entities.ai import AIResponse
 from src.use_cases.services.output_sanitizer import OutputSanitizerService
+from src.use_cases.services.credential_manager import CredentialSyncService
 
 class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
     def __init__(
@@ -21,7 +23,9 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
         fs: FileSystemGateway,
         logger: LoggerPort,
         sanitizer: OutputSanitizerService,
-        binary_path: str = "/usr/local/bin/gemini",
+        credential_service: CredentialSyncService,
+        config_gateway: GeminiConfigGateway,
+        binary_path: str = "gemini",
         auth_method: str = "api_key",
         api_key: Optional[str] = None,
         vertex_project: Optional[str] = None,
@@ -32,6 +36,8 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
         self.fs = fs
         self.logger = logger
         self.sanitizer = sanitizer
+        self.credential_service = credential_service
+        self.config_gateway = config_gateway
         self.binary_path = binary_path
         self.auth_method = auth_method
         self.api_key = api_key
@@ -48,17 +54,22 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
         self.fs.ensure_dir(self.base_session_path)
 
     def _get_env_for_session(self, session_id: str) -> dict:
-        """Genera el entorno aislado y configura la autenticación según la estrategia."""
+        """Genera el entorno aislado y asegura la sincronización de credenciales."""
         safe_id = "".join(c for c in session_id if c.isalnum() or c in ("_", "-"))
         session_path = os.path.join(self.base_session_path, safe_id)
         self.fs.ensure_dir(session_path)
         
-        env = {
+        # Delegamos la sincronización al servicio especializado
+        if self.auth_method == "google_auth":
+            self.credential_service.sync_credentials(session_path)
+        
+        env = os.environ.copy()
+        env.update({
             "GEMINI_CLI_HOME": session_path,
             "PATH": os.environ.get("PATH", ""),
             "TERM": "xterm-256color",
             "COLORTERM": "truecolor"
-        }
+        })
         
         if self.auth_method == "api_key" and self.api_key:
             env["GEMINI_API_KEY"] = self.api_key
@@ -69,36 +80,7 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
                 env["GOOGLE_CLOUD_PROJECT"] = self.vertex_project
             env["GOOGLE_CLOUD_LOCATION"] = self.vertex_location
             
-        elif self.auth_method == "google_auth":
-            self._handle_google_auth_inheritance(session_path)
-            
         return env
-
-    def _handle_google_auth_inheritance(self, session_path: str):
-        """
-        Copia la configuración global de Gemini al entorno de la sesión 
-        para heredar la identidad del usuario (OAuth, proyectos, etc).
-        """
-        global_config_dir = os.path.expanduser("~/.gemini")
-        target_config_dir = os.path.join(session_path, ".gemini")
-        
-        if self.fs.exists(global_config_dir):
-            # Si ya existe en la sesión, evitamos la redundancia de I/O en cada mensaje
-            if self.fs.exists(target_config_dir):
-                self.logger.debug(f"ℹ️ Credenciales ya presentes en {target_config_dir}. Saltando sincronización.")
-                return
-
-            try:
-                self.logger.info(f"🔑 Sincronizando credenciales desde {global_config_dir} (Copia inicial)")
-                # Copiamos la carpeta entera para asegurar OAuth y settings
-                self.fs.copy_directory(
-                    global_config_dir, 
-                    target_config_dir, 
-                    ignore_patterns=["tmp*", "sessions*", "logs*", "antigravity*"]
-                )
-                self.logger.info(f"✅ Credenciales sincronizadas.")
-            except Exception as e:
-                self.logger.warning(f"⚠️  Error sincronizando credenciales: {e}")
 
     async def validate(self) -> bool:
         """
@@ -193,8 +175,11 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
             if attachments:
                 args.extend(attachments)
             
-            # Obtener argumentos extra (ej: directorios para el sandbox)
-            extra_args = self._get_sandbox_extra_args()
+            # Obtener argumentos extra desde el proveedor de configuración
+            include_dirs = self.config_gateway.get_include_directories()
+            extra_args = []
+            for path in include_dirs:
+                extra_args.extend(["--include-directories", path])
             
             return_code, stdout, stderr = await self.shell.execute(
                 args + extra_args, 
@@ -255,45 +240,15 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
     async def get_mcp_info(self) -> str:
         """Obtiene el listado de servidores MCP configurados y su estado."""
         env = self._get_env_for_session("system_check")
-        extra_args = self._get_sandbox_extra_args()
+        
+        include_dirs = self.config_gateway.get_include_directories()
+        extra_args = []
+        for path in include_dirs:
+            extra_args.extend(["--include-directories", path])
+
         args = [self.binary_path, "mcp", "list"]
         
         rc, stdout, stderr = await self.shell.execute(args + extra_args, env=env)
         if rc != 0:
             return f"Error al listar MCP: {stderr or stdout}"
         return stdout
-
-    def _get_sandbox_extra_args(self) -> List[str]:
-        """
-        Analiza settings.json para encontrar paths de MCP y autorizarlos 
-        dentro del sandbox usando --include-directories.
-        """
-        extra_args = []
-        config_path = os.path.expanduser("~/.gemini/settings.json")
-        
-        if not self.fs.exists(config_path):
-            return extra_args
-
-        try:
-            import json
-            content = self.fs.read_text(config_path)
-            config = json.loads(content)
-            mcp_servers = config.get("mcpServers", {})
-            
-            paths_to_include = set()
-            for name, details in mcp_servers.items():
-                args = details.get("args", [])
-                if args:
-                    # El primer argumento suele ser el path al script
-                    script_path = args[0]
-                    if os.path.isabs(script_path):
-                        # Incluimos el directorio padre del script
-                        paths_to_include.add(os.path.dirname(script_path))
-            
-            for path in paths_to_include:
-                extra_args.extend(["--include-directories", path])
-                
-        except Exception as e:
-            self.logger.warning(f"⚠️  Error al detectar paths para sandbox: {e}")
-            
-        return extra_args
