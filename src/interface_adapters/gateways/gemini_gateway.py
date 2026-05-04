@@ -83,13 +83,14 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
         target_config_dir = os.path.join(session_path, ".gemini")
         
         if self.fs.exists(global_config_dir):
+            # Si ya existe en la sesión, evitamos la redundancia de I/O en cada mensaje
+            if self.fs.exists(target_config_dir):
+                self.logger.debug(f"ℹ️ Credenciales ya presentes en {target_config_dir}. Saltando sincronización.")
+                return
+
             import shutil
             try:
-                # Si ya existe, lo borramos para asegurar una copia limpia y fresca
-                if os.path.exists(target_config_dir):
-                    shutil.rmtree(target_config_dir)
-                
-                self.logger.info(f"🔑 Sincronizando credenciales desde {global_config_dir}")
+                self.logger.info(f"🔑 Sincronizando credenciales desde {global_config_dir} (Copia inicial)")
                 # Copiamos la carpeta entera para asegurar OAuth y settings
                 shutil.copytree(
                     global_config_dir, 
