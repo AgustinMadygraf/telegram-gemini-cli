@@ -147,8 +147,8 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
                 self.logger.error(f"❌ Error crítico detectado en la salida de Gemini: {sanitized_stdout} {sanitized_stderr}")
                 return False
 
-            # 4. Errores transitorios del backend (500, timeouts) → WARNING (permiten arranque)
-            transient_indicators = ["status: 500", "internal error", "timeout"]
+            # 4. Errores transitorios del backend (500, 429, timeouts) → WARNING (permiten arranque)
+            transient_indicators = ["status: 500", "internal error", "timeout", "status: 429", "resource_exhausted", "capacity"]
             is_transient = any(ind in combined_output for ind in transient_indicators) or return_code == -1
             
             if return_code != 0:
@@ -214,6 +214,19 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
             sanitized_text = self.sanitizer.sanitize(stdout, logger=self.logger)
             
             if not sanitized_text:
+                # Detectar errores transitorios de Google en la salida cruda
+                combined_raw = f"{stdout} {stderr}".lower()
+                
+                if "429" in combined_raw or "resource_exhausted" in combined_raw or "capacity" in combined_raw:
+                    error_msg = "⏳ El servidor de Google está saturado (429). Intentá de nuevo en unos minutos."
+                    self.logger.warning(f"⚠️ Rate limit detectado: MODEL_CAPACITY_EXHAUSTED")
+                    return AIResponse(text="", success=False, error_message=error_msg)
+                
+                if "status: 500" in combined_raw or "internal error" in combined_raw:
+                    error_msg = "⚠️ Error interno del servidor de Google (500). Es un problema transitorio."
+                    self.logger.warning(f"⚠️ Error 500 transitorio detectado")
+                    return AIResponse(text="", success=False, error_message=error_msg)
+
                 if stdout:
                     self.logger.debug("🔍 [DEBUG RAW OUTPUT] La respuesta fue vaciada. Contenido original:")
                     self.logger.debug("-" * 40)
