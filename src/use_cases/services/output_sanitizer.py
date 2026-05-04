@@ -4,6 +4,7 @@ Path: src/use_cases/services/output_sanitizer.py
 
 import re
 from typing import List, Optional
+from src.use_cases.ports.interfaces import LoggerPort
 
 class OutputSanitizerService:
     """
@@ -65,9 +66,10 @@ class OutputSanitizerService:
         # Compilar patrones para mejorar rendimiento
         self.compiled_patterns = [re.compile(p, re.IGNORECASE) for p in self.noise_patterns]
 
-    def sanitize(self, text: str) -> str:
+    def sanitize(self, text: str, logger: Optional[LoggerPort] = None) -> str:
         """
         Filtra ruidos técnicos, caracteres de control y bloques vacíos usando regex.
+        Si se provee un logger, registra el ruido filtrado para depuración.
         """
         if not text:
             return ""
@@ -80,6 +82,7 @@ class OutputSanitizerService:
 
         lines = text.splitlines()
         clean_lines = []
+        filtered_count = 0
 
         for line in lines:
             trimmed = line.strip()
@@ -87,14 +90,21 @@ class OutputSanitizerService:
                 continue
                 
             # Filtrar si coincide con algún patrón de ruido
-            if any(pattern.search(trimmed) for pattern in self.compiled_patterns):
-                continue
+            is_noise = any(pattern.search(trimmed) for pattern in self.compiled_patterns)
             
-            # Filtrar líneas que son solo restos de JSON o cierres de bloques de código accidentales
-            if trimmed in ["}", "},", "]", "],", "{", "["]:
+            # Filtrar líneas que son solo restos de JSON o cierres de bloques accidentales
+            is_fragment = trimmed in ["}", "},", "]", "],", "{", "["]
+
+            if is_noise or is_fragment:
+                filtered_count += 1
+                if logger:
+                    logger.debug(f"🧹 Filtrado por sanitizer: {trimmed}")
                 continue
                 
             clean_lines.append(trimmed)
+
+        if logger and filtered_count > 0:
+            logger.debug(f"📊 Sanitizer: {filtered_count} líneas de ruido eliminadas.")
 
         # 3. Reensamblar
         result = "\n".join(clean_lines).strip()

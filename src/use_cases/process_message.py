@@ -12,6 +12,7 @@ from src.use_cases.ports.interfaces import (
 )
 from src.entities.chat import ChatMessage
 from src.entities.ai import AIResponse
+from src.entities.ai_session import AISession
 from src.use_cases.services.resilience_service import CircuitBreakerService
 from typing import List, Optional
 import os
@@ -57,9 +58,10 @@ class ProcessMessageUseCase:
             await self.history.save_message(message)
 
         # 1. Manejo de Comandos Especiales
+        session = AISession(id=session_id)
         if message.text.strip().lower() == "/reset":
             await self.messenger.set_typing(message.chat_id)
-            success = await self.ai_engine.reset(session_id=session_id)
+            success = await self.ai_engine.reset(session=session)
             await self.messenger.send_message(
                 chat_id=message.chat_id, 
                 text="🔄 <b>Contexto reiniciado</b>" if success else "❌ <b>Error al reiniciar</b>",
@@ -94,7 +96,7 @@ class ProcessMessageUseCase:
 
         # 5. Consultar a la IA con Circuit Breaker
         try:
-            response = await self.ai_engine.ask(message.text, session_id=session_id, attachments=attachments)
+            response = await self.ai_engine.ask(message.text, session=session, attachments=attachments)
             
             if response.success and response.text.strip():
                 self.circuit_breaker.record_success()

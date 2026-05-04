@@ -5,6 +5,7 @@ Path: src/use_cases/ports/interfaces.py
 from abc import ABC, abstractmethod
 from typing import Optional, Tuple, List
 from src.entities.ai import AIResponse
+from src.entities.ai_session import AISession
 from src.entities.network import WebhookStatus
 from src.entities.chat import ChatMessage
 
@@ -36,12 +37,12 @@ class LoggerPort(ABC):
 
 class AIEngineGateway(ABC):
     @abstractmethod
-    async def ask(self, prompt: str, session_id: Optional[str] = None, attachments: List[str] = None) -> AIResponse:
+    async def ask(self, prompt: str, session: Optional[AISession] = None, attachments: List[str] = None) -> AIResponse:
         """Envia un prompt a la IA."""
         pass
 
     @abstractmethod
-    async def reset(self, session_id: Optional[str] = None) -> bool:
+    async def reset(self, session: Optional[AISession] = None) -> bool:
         """Reinicia el contexto de la sesión."""
         pass
 

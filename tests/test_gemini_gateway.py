@@ -4,6 +4,7 @@ from src.interface_adapters.gateways.gemini_gateway import GeminiCLIAdapter
 from src.use_cases.ports.interfaces import ShellGateway, FileSystemGateway, GeminiConfigGateway
 from src.use_cases.services.output_sanitizer import OutputSanitizerService
 from src.use_cases.services.credential_manager import CredentialSyncService
+from src.entities.ai_session import AISession
 
 @pytest.fixture
 def mock_shell():
@@ -61,7 +62,8 @@ async def test_ask_unexpected_exception(adapter, mock_shell):
 
 @pytest.mark.asyncio
 async def test_reset_success(adapter, mock_fs):
-    assert await adapter.reset("user1") is True
+    session = AISession(id="user1")
+    assert await adapter.reset(session) is True
     mock_fs.remove_directory.assert_called()
 
 def test_google_auth_inheritance_calls_service(mock_shell, mock_fs, mock_logger, mock_sanitizer, mock_credential_service, mock_config_gateway):
@@ -71,13 +73,15 @@ def test_google_auth_inheritance_calls_service(mock_shell, mock_fs, mock_logger,
         mock_credential_service, mock_config_gateway,
         auth_method="google_auth"
     )
-    adapter._get_env_for_session("user1")
+    session = AISession(id="user1")
+    adapter._get_env_for_session(session)
     mock_credential_service.sync_credentials.assert_called()
 
 @pytest.mark.asyncio
 async def test_ask_uses_config_gateway(adapter, mock_shell, mock_config_gateway):
     mock_shell.execute.return_value = (0, "ok", "")
-    await adapter.ask("test prompt")
+    session = AISession(id="user1")
+    await adapter.ask("test prompt", session=session)
     mock_config_gateway.get_include_directories.assert_called()
     
     args, kwargs = mock_shell.execute.call_args
@@ -93,3 +97,9 @@ async def test_validate_success(mock_shell, mock_fs, mock_logger, mock_sanitizer
         (0, "hi", "")
     ]
     assert await adapter.validate() is True
+
+@pytest.mark.asyncio
+async def test_validate_infra_error_in_output(mock_shell, mock_fs, mock_logger, mock_sanitizer, mock_credential_service, mock_config_gateway):
+    adapter = GeminiCLIAdapter(mock_shell, mock_fs, mock_logger, mock_sanitizer, mock_credential_service, mock_config_gateway)
+    mock_shell.execute.return_value = (0, "fatal error: authentication failed", "")
+    assert await adapter.validate() is False

@@ -13,6 +13,7 @@ from src.use_cases.ports.interfaces import (
     GeminiConfigGateway
 )
 from src.entities.ai import AIResponse
+from src.entities.ai_session import AISession
 from src.use_cases.services.output_sanitizer import OutputSanitizerService
 from src.use_cases.services.credential_manager import CredentialSyncService
 
@@ -53,9 +54,10 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
         self.base_session_path = self.fs.get_absolute_path("storage/sessions")
         self.fs.ensure_dir(self.base_session_path)
 
-    def _get_env_for_session(self, session_id: str) -> dict:
+    def _get_env_for_session(self, session: Optional[AISession]) -> dict:
         """Genera el entorno aislado y asegura la sincronización de credenciales."""
-        safe_id = "".join(c for c in session_id if c.isalnum() or c in ("_", "-"))
+        # Si no hay sesión, usamos una por defecto 'default'
+        safe_id = session.safe_id if session else "default"
         session_path = os.path.join(self.base_session_path, safe_id)
         self.fs.ensure_dir(session_path)
         
@@ -108,7 +110,7 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
                     return False
 
             # 2.2 Usamos una sesión especial de validación de sistema
-            env = self._get_env_for_session("system_check")
+            env = self._get_env_for_session(AISession(id="system_check"))
             
             # Ejecutamos un ping mínimo
             args = [
@@ -154,27 +156,27 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
             self.logger.error(f"❌ Excepción en validador Gemini: {str(e)}")
             return False
 
-    async def ask(self, prompt: str, session_id: Optional[str] = None, attachments: List[str] = None) -> AIResponse:
-        """Ejecuta una consulta al CLI de Gemini delegando la ejecución al shell con aislamiento."""
-        return_code, stdout, stderr = -1, "", ""
+    async def ask(
+        self, 
+        prompt: str, 
+        session: Optional[AISession] = None, 
+        attachments: List[str] = None
+    ) -> AIResponse:
+        """
+        Envía un prompt al CLI de Gemini dentro de un entorno aislado.
+        """
+        env = self._get_env_for_session(session)
+        
+        args = [self.binary_path, "--prompt", prompt, "--sandbox", "--approval-mode", "yolo"]
+        
+        # Si hay sesión, intentamos resumirla
+        if session:
+            args.append("--resume")
+
+        if attachments:
+            args.extend(attachments)
+
         try:
-            session_id = session_id or "latest"
-            env = self._get_env_for_session(session_id)
-            
-            # Construcción de argumentos base
-            args = [
-                self.binary_path,
-                "--sandbox",
-                "-p", prompt,
-                "--resume",
-                "--output-format", "text",
-                "--approval-mode", "yolo"
-            ]
-            
-            # Añadir archivos adjuntos si existen
-            if attachments:
-                args.extend(attachments)
-            
             # Obtener argumentos extra desde el proveedor de configuración
             include_dirs = self.config_gateway.get_include_directories()
             extra_args = []
@@ -189,35 +191,38 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
                 line_filter=self.sanitizer.noise_patterns
             )
 
-            # Sanitizamos ambos flujos
-            sanitized_stdout = self.sanitizer.sanitize(stdout)
-            sanitized_stderr = self.sanitizer.sanitize(stderr)
+            # Sanitizar y verificar
+            sanitized_text = self.sanitizer.sanitize(stdout, logger=self.logger)
+            
+            if not sanitized_text:
+                if stdout:
+                    self.logger.debug("🔍 [DEBUG RAW OUTPUT] La respuesta fue vaciada. Contenido original:")
+                    self.logger.debug("-" * 40)
+                    self.logger.debug(stdout)
+                    self.logger.debug("-" * 40)
+                return AIResponse(text="", success=False, error_message="Respuesta vacía tras sanitización")
 
             if return_code == 0:
-                # Si tenemos éxito, priorizamos la salida estándar sanitizada
-                # Si stdout queda vacío tras sanitizar, pero stderr tiene contenido útil (raro en éxito), lo consideramos.
-                result_text = sanitized_stdout or sanitized_stderr
-                return AIResponse(text=result_text, success=True)
+                return AIResponse(text=sanitized_text, success=True)
             else:
                 # Manejo específico de fallos de sesión para reintentar sin --resume
-                if "--resume" in stderr.lower() or "no session" in stderr.lower():
-                    self.logger.info(f"🔄 Reintentando sin --resume para sesión {session_id}")
+                if session and ("--resume" in stderr.lower() or "no session" in stderr.lower()):
+                    self.logger.info(f"🔄 Reintentando sin --resume para sesión {session.id}")
                     args.remove("--resume")
                     return_code, stdout, stderr = await self.shell.execute(
-                        args, 
+                        args + extra_args, 
                         env=env, 
                         cwd=self.workspace_path, 
                         timeout=180.0,
                         line_filter=self.sanitizer.noise_patterns
                     )
                     if return_code == 0:
-                        return AIResponse(text=self.sanitizer.sanitize(stdout), success=True)
+                        return AIResponse(text=self.sanitizer.sanitize(stdout, logger=self.logger), success=True)
 
                 # Si falló definitivamente, devolvemos el error sanitizado
-                # Si el error sanitizado queda vacío (por exceso de filtrado), usamos el original o un genérico
-                error_msg = sanitized_stderr or sanitized_stdout
+                sanitized_stderr = self.sanitizer.sanitize(stderr)
+                error_msg = sanitized_stderr or sanitized_text
                 if not error_msg:
-                    # Si no hay nada tras sanitizar, pero hubo error, extraemos una pista del original
                     if "status: 500" in stderr or "status: 500" in stdout:
                         error_msg = "Error interno del servidor Gemini (500)"
                     else:
@@ -225,11 +230,13 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
                 
                 return AIResponse(text="", success=False, error_message=error_msg)
         except Exception as e:
+            self.logger.error(f"❌ Error inesperado en GeminiCLIAdapter: {e}")
             return AIResponse(text="", success=False, error_message=str(e))
 
-    async def reset(self, session_id: str = "latest") -> bool:
+    async def reset(self, session: Optional[AISession] = None) -> bool:
         """Reinicia el contexto borrando el directorio de la sesión."""
-        session_path = os.path.join(self.base_session_path, session_id)
+        safe_id = session.safe_id if session else "default"
+        session_path = os.path.join(self.base_session_path, safe_id)
         try:
             # Usamos el sistema de archivos para borrar el directorio de forma recursiva
             self.fs.remove_directory(session_path)
@@ -239,7 +246,9 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
 
     async def get_mcp_info(self) -> str:
         """Obtiene el listado de servidores MCP configurados y su estado."""
-        env = self._get_env_for_session("system_check")
+        # Usamos una sesión especial para chequeos de sistema
+        system_session = AISession(id="system_check")
+        env = self._get_env_for_session(system_session)
         
         include_dirs = self.config_gateway.get_include_directories()
         extra_args = []
