@@ -90,6 +90,8 @@ async def test_ask_uses_config_gateway(adapter, mock_shell, mock_config_gateway)
     assert "/mcp/path" in cli_args
     # --sandbox es incompatible con --include-directories (aísla el filesystem)
     assert "--sandbox" not in cli_args
+    # --skip-trust es necesario sin sandbox (workspaces de sesión no están pre-confiados)
+    assert "--skip-trust" in cli_args
 
 @pytest.mark.asyncio
 async def test_ask_uses_sandbox_when_no_include_dirs(adapter, mock_shell, mock_config_gateway):
@@ -102,6 +104,7 @@ async def test_ask_uses_sandbox_when_no_include_dirs(adapter, mock_shell, mock_c
     cli_args = args[0]
     assert "--sandbox" in cli_args
     assert "--include-directories" not in cli_args
+    assert "--skip-trust" not in cli_args
 
 @pytest.mark.asyncio
 async def test_validate_success(mock_shell, mock_fs, mock_logger, mock_sanitizer, mock_credential_service, mock_config_gateway):

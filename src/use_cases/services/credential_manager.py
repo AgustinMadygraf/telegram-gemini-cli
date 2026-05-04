@@ -45,9 +45,10 @@ class CredentialSyncService:
 
     def _sanitize_session_settings(self, config_dir: str) -> None:
         """
-        Elimina la sección mcpServers del settings.json de la sesión.
-        Esto obliga a Gemini CLI a usar únicamente los servidores que nosotros
-        le pasamos por línea de comandos (ya validados).
+        Sanea el settings.json de la sesión eliminando únicamente los servidores MCP
+        cuyos scripts no existen en disco (para evitar crashes del CLI).
+        La sección mcpServers debe persistir porque es lo que le dice a Gemini CLI
+        qué servidores conectar. --include-directories solo expone rutas al workspace.
         """
         import json
         settings_path = os.path.join(config_dir, "settings.json")
@@ -58,10 +59,23 @@ class CredentialSyncService:
             content = self.fs.read_text(settings_path)
             data = json.loads(content)
             
-            if "mcpServers" in data:
-                del data["mcpServers"]
+            mcp_servers = data.get("mcpServers", {})
+            if not mcp_servers:
+                return
+            
+            # Solo eliminamos servidores cuyo script no existe en disco
+            invalid_servers = []
+            for name, details in mcp_servers.items():
+                args = details.get("args", [])
+                if args and not os.path.exists(args[0]):
+                    invalid_servers.append(name)
+                    self.logger.warning(f"⚠️ MCP '{name}': Script no encontrado ({args[0]}), removido de la sesión")
+            
+            if invalid_servers:
+                for name in invalid_servers:
+                    del mcp_servers[name]
                 self.fs.write_text(settings_path, json.dumps(data, indent=2))
-                self.logger.info("🧹 Configuración de MCPs globales eliminada de la sesión (se usará inyección por CLI)")
                     
         except Exception as e:
             self.logger.warning(f"⚠️ No se pudo limpiar settings.json de la sesión: {e}")
+

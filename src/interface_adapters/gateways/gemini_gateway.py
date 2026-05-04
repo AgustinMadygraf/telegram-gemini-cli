@@ -182,8 +182,11 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
 
         # --sandbox aísla el filesystem e impide acceso a directorios externos (MCPs).
         # Solo se activa si no hay include-directories que requieran acceso externo.
+        # --skip-trust es necesario sin sandbox porque los workspaces de sesión no están pre-confiados.
         args = [self.binary_path, "--prompt", prompt, "--approval-mode", "yolo"]
-        if not extra_args:
+        if extra_args:
+            args.append("--skip-trust")
+        else:
             args.append("--sandbox")
         
         # Si hay sesión, intentamos resumirla
