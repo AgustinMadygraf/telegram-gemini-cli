@@ -169,6 +169,6 @@ async def test_ask_uses_auto_approval_mode(adapter, mock_shell):
     cli_args = args[0]
     
     assert "--approval-mode" in cli_args
-    assert "auto" in cli_args
+    assert "yolo" in cli_args
     # Aseguramos que NO sea auto_edit
     assert "auto_edit" not in cli_args

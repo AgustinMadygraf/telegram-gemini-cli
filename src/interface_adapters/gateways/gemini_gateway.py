@@ -135,7 +135,7 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
                 "--sandbox",
                 "-p", "hi",
                 "--output-format", "text",
-                "--approval-mode", "auto"
+                "--approval-mode", "yolo"
             ]
             
             timeout_seconds = 120.0
@@ -187,7 +187,7 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
                 "-p", prompt,
                 "--resume",
                 "--output-format", "text",
-                "--approval-mode", "auto"
+                "--approval-mode", "yolo"
             ]
             
             # Añadir archivos adjuntos si existen
