@@ -86,11 +86,26 @@ async def test_ask_retry_without_resume(adapter, mock_shell):
     assert resp.text == "respuesta"
     assert mock_shell.execute.call_count == 2
 
-def test_google_auth_inheritance_cleanup(mock_shell, mock_fs, mock_logger, mock_sanitizer):
+def test_google_auth_inheritance_lazy_skip(mock_shell, mock_fs, mock_logger, mock_sanitizer):
+    """Verifica que NO se sincronice si las credenciales ya existen (Lazy Sync)."""
     adapter = GeminiCLIAdapter(mock_shell, mock_fs, mock_logger, mock_sanitizer, auth_method="google_auth")
-    with patch("shutil.copytree"), patch("shutil.rmtree") as mock_rm, patch("os.path.exists", return_value=True):
+    # mock_fs.exists retornará True para el origen y True para el destino
+    mock_fs.exists.return_value = True
+    
+    with patch("shutil.copytree") as mock_copy, patch("shutil.rmtree") as mock_rm:
         adapter._get_env_for_session("user1")
-        mock_rm.assert_called()
+        mock_rm.assert_not_called()
+        mock_copy.assert_not_called()
+
+def test_google_auth_inheritance_sync_when_missing(mock_shell, mock_fs, mock_logger, mock_sanitizer):
+    """Verifica que se sincronice si las credenciales NO existen en la sesión."""
+    adapter = GeminiCLIAdapter(mock_shell, mock_fs, mock_logger, mock_sanitizer, auth_method="google_auth")
+    # Simulamos: origen existe (True), pero destino NO existe (False)
+    mock_fs.exists.side_effect = [True, False]
+    
+    with patch("shutil.copytree") as mock_copy:
+        adapter._get_env_for_session("user1")
+        mock_copy.assert_called()
 
 def test_vertex_ai_auth(mock_shell, mock_fs, mock_logger, mock_sanitizer):
     adapter = GeminiCLIAdapter(
@@ -142,3 +157,18 @@ async def test_ask_failure(adapter, mock_shell):
 async def test_reset_success(adapter, mock_shell):
     mock_shell.execute.return_value = (0, "", "")
     assert await adapter.reset("user1") is True
+
+@pytest.mark.asyncio
+async def test_ask_uses_auto_approval_mode(adapter, mock_shell):
+    """Verifica que se use --approval-mode auto para permitir tool calls de MCP."""
+    mock_shell.execute.return_value = (0, "ok", "")
+    await adapter.ask("test prompt")
+    
+    # Obtenemos los argumentos de la primera llamada a shell.execute
+    args, kwargs = mock_shell.execute.call_args
+    cli_args = args[0]
+    
+    assert "--approval-mode" in cli_args
+    assert "auto" in cli_args
+    # Aseguramos que NO sea auto_edit
+    assert "auto_edit" not in cli_args
