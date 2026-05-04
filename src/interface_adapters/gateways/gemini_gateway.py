@@ -183,6 +183,9 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
             for path in include_dirs:
                 extra_args.extend(["--include-directories", path])
             
+            # Log de depuración para ver los argumentos finales
+            self.logger.debug(f"📝 Comando Gemini: {' '.join(args + extra_args)}")
+
             return_code, stdout, stderr = await self.shell.execute(
                 args + extra_args, 
                 env=env, 
@@ -250,14 +253,10 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
         system_session = AISession(id="system_check")
         env = self._get_env_for_session(system_session)
         
-        include_dirs = self.config_gateway.get_include_directories()
-        extra_args = []
-        for path in include_dirs:
-            extra_args.extend(["--include-directories", path])
-
+        # ⚠️ mcp list NO soporta --include-directories
         args = [self.binary_path, "mcp", "list"]
         
-        rc, stdout, stderr = await self.shell.execute(args + extra_args, env=env)
+        rc, stdout, stderr = await self.shell.execute(args, env=env)
         if rc != 0:
             return f"Error al listar MCP: {stderr or stdout}"
         return stdout
