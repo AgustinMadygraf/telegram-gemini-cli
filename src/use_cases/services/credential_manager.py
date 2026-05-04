@@ -27,18 +27,52 @@ class CredentialSyncService:
             self.logger.warning(f"⚠️ No se encontró directorio global de credenciales en {global_config_dir}")
             return
 
-        # Si ya existe en el destino, saltamos (Lazy Sync)
-        if self.fs.exists(target_config_dir):
-            self.logger.debug(f"ℹ️ Credenciales ya presentes en {target_config_dir}. Saltando.")
+        # Sincronización selectiva (Copy only if missing)
+        if not self.fs.exists(target_config_dir):
+            try:
+                self.logger.info(f"🔑 Sincronizando identidad OAuth hacia {target_config_dir}")
+                self.fs.copy_directory(
+                    global_config_dir, 
+                    target_config_dir, 
+                    ignore_patterns=["tmp*", "sessions*", "logs*", "antigravity*"]
+                )
+            except Exception as e:
+                self.logger.error(f"❌ Error crítico copiando credenciales: {e}")
+                raise
+        
+        # Siempre sanear para asegurar integridad en cada mensaje
+        self._sanitize_session_settings(target_config_dir)
+
+    def _sanitize_session_settings(self, config_dir: str) -> None:
+        """
+        Limpia el settings.json de la sesión eliminando MCPs con paths inexistentes.
+        """
+        import json
+        settings_path = os.path.join(config_dir, "settings.json")
+        if not self.fs.exists(settings_path):
             return
 
         try:
-            self.logger.info(f"🔑 Sincronizando identidad OAuth hacia {target_config_dir}")
-            self.fs.copy_directory(
-                global_config_dir, 
-                target_config_dir, 
-                ignore_patterns=["tmp*", "sessions*", "logs*", "antigravity*"]
-            )
+            content = self.fs.read_text(settings_path)
+            data = json.loads(content)
+            
+            if "mcpServers" in data:
+                original_count = len(data["mcpServers"])
+                valid_mcp = {}
+                
+                for name, config in data["mcpServers"].items():
+                    args = config.get("args", [])
+                    if args and os.path.isabs(args[0]):
+                        if os.path.exists(args[0]): # Usamos os.path directo para velocidad
+                            valid_mcp[name] = config
+                        else:
+                            self.logger.debug(f"🧹 Eliminando MCP inválido de la sesión: {name}")
+                
+                data["mcpServers"] = valid_mcp
+                
+                if len(valid_mcp) != original_count:
+                    self.fs.write_text(settings_path, json.dumps(data, indent=2))
+                    self.logger.info(f"✅ settings.json saneado ({len(valid_mcp)}/{original_count} MCPs válidos)")
+                    
         except Exception as e:
-            self.logger.error(f"❌ Error crítico sincronizando credenciales: {e}")
-            raise
+            self.logger.warning(f"⚠️ No se pudo sanear settings.json de la sesión: {e}")

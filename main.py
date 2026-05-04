@@ -76,13 +76,16 @@ history_adapter = SQLiteHistoryAdapter(
 )
 circuit_breaker = CircuitBreakerService(failure_threshold=3, recovery_timeout=60)
 
-# 1.1 Servicios de Dominio / Soporte
+# 2. Instanciar Adaptadores de Infraestructura (Gateways)
+telegram_adapter = TelegramAdapter(
+    token=settings.TELEGRAM_BOT_TOKEN, 
+    logger=telegram_logger
+)
+
+# 2.1 Servicios de Dominio / Soporte
 credential_manager = CredentialSyncService(fs=file_system, logger=ai_logger)
 config_provider = GeminiLocalConfigAdapter(fs=file_system, logger=ai_logger)
-attachment_manager = AttachmentManager(file_gateway=telegram_adapter, logger=ai_logger, download_path=settings.DOWNLOADS_PATH)
-command_dispatcher = CommandDispatcher(ai_engine=gemini_gateway, messenger=telegram_adapter, logger=ai_logger)
 
-# 2. Instanciar Adaptadores de Infraestructura (Gateways)
 gemini_gateway = GeminiCLIAdapter(
     shell=shell_runner, 
     fs=file_system,
@@ -98,9 +101,15 @@ gemini_gateway = GeminiCLIAdapter(
     workspace_path=settings.GEMINI_WORKSPACE
 )
 
-telegram_adapter = TelegramAdapter(
-    token=settings.TELEGRAM_BOT_TOKEN, 
-    logger=telegram_logger
+attachment_manager = AttachmentManager(
+    file_gateway=telegram_adapter, 
+    logger=ai_logger, 
+    download_path=settings.DOWNLOADS_PATH
+)
+command_dispatcher = CommandDispatcher(
+    ai_engine=gemini_gateway, 
+    messenger=telegram_adapter, 
+    logger=ai_logger
 )
 
 tunnel_runner = CloudflareTunnelRunner(
