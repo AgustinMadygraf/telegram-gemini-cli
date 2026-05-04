@@ -45,6 +45,11 @@ class AIEngineGateway(ABC):
         """Reinicia el contexto de la sesión."""
         pass
 
+    @abstractmethod
+    async def get_mcp_info(self) -> str:
+        """Obtiene información sobre el estado de los servidores MCP desde la perspectiva de la IA."""
+        pass
+
 class MessagePresenter(ABC):
     @abstractmethod
     def format_response(self, response: AIResponse) -> List[str]:
@@ -122,7 +127,7 @@ class FileSystemGateway(ABC):
         pass
 
     @abstractmethod
-    def write_file(self, path: str, content: str) -> None:
+    def write_text(self, path: str, content: str) -> None:
         pass
 
     @abstractmethod
@@ -130,11 +135,26 @@ class FileSystemGateway(ABC):
         pass
 
     @abstractmethod
-    def read(self, path: str) -> str:
+    def read_text(self, path: str) -> str:
         pass
 
     @abstractmethod
     def delete(self, path: str) -> None:
+        pass
+
+    @abstractmethod
+    def copy_directory(self, src: str, dst: str, ignore_patterns: List[str] = None) -> None:
+        """Copia un directorio completo recursivamente."""
+        pass
+
+    @abstractmethod
+    def remove_directory(self, path: str) -> None:
+        """Elimina un directorio y todo su contenido."""
+        pass
+
+    @abstractmethod
+    def get_absolute_path(self, path: str) -> str:
+        """Convierte una ruta a su versión absoluta."""
         pass
 
 class MarkdownConverterPort(ABC):

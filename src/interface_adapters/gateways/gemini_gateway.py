@@ -44,7 +44,7 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
             self.fs.ensure_dir(self.workspace_path)
         
         # Centralizamos en la nueva carpeta storage
-        self.base_session_path = os.path.abspath("storage/sessions")
+        self.base_session_path = self.fs.get_absolute_path("storage/sessions")
         self.fs.ensure_dir(self.base_session_path)
 
     def _get_env_for_session(self, session_id: str) -> dict:
@@ -88,14 +88,13 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
                 self.logger.debug(f"ℹ️ Credenciales ya presentes en {target_config_dir}. Saltando sincronización.")
                 return
 
-            import shutil
             try:
                 self.logger.info(f"🔑 Sincronizando credenciales desde {global_config_dir} (Copia inicial)")
                 # Copiamos la carpeta entera para asegurar OAuth y settings
-                shutil.copytree(
+                self.fs.copy_directory(
                     global_config_dir, 
                     target_config_dir, 
-                    ignore=shutil.ignore_patterns("tmp*", "sessions*", "logs*", "antigravity*")
+                    ignore_patterns=["tmp*", "sessions*", "logs*", "antigravity*"]
                 )
                 self.logger.info(f"✅ Credenciales sincronizadas.")
             except Exception as e:
@@ -194,8 +193,11 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
             if attachments:
                 args.extend(attachments)
             
+            # Obtener argumentos extra (ej: directorios para el sandbox)
+            extra_args = self._get_sandbox_extra_args()
+            
             return_code, stdout, stderr = await self.shell.execute(
-                args, 
+                args + extra_args, 
                 env=env, 
                 cwd=self.workspace_path, 
                 timeout=180.0,
@@ -244,8 +246,54 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
         """Reinicia el contexto borrando el directorio de la sesión."""
         session_path = os.path.join(self.base_session_path, session_id)
         try:
-            # Usamos el shell para borrar el directorio de forma recursiva
-            await self.shell.execute(["rm", "-rf", session_path], cwd=self.workspace_path)
+            # Usamos el sistema de archivos para borrar el directorio de forma recursiva
+            self.fs.remove_directory(session_path)
             return True
         except Exception:
             return False
+
+    async def get_mcp_info(self) -> str:
+        """Obtiene el listado de servidores MCP configurados y su estado."""
+        env = self._get_env_for_session("system_check")
+        extra_args = self._get_sandbox_extra_args()
+        args = [self.binary_path, "mcp", "list"]
+        
+        rc, stdout, stderr = await self.shell.execute(args + extra_args, env=env)
+        if rc != 0:
+            return f"Error al listar MCP: {stderr or stdout}"
+        return stdout
+
+    def _get_sandbox_extra_args(self) -> List[str]:
+        """
+        Analiza settings.json para encontrar paths de MCP y autorizarlos 
+        dentro del sandbox usando --include-directories.
+        """
+        extra_args = []
+        config_path = os.path.expanduser("~/.gemini/settings.json")
+        
+        if not self.fs.exists(config_path):
+            return extra_args
+
+        try:
+            import json
+            content = self.fs.read_text(config_path)
+            config = json.loads(content)
+            mcp_servers = config.get("mcpServers", {})
+            
+            paths_to_include = set()
+            for name, details in mcp_servers.items():
+                args = details.get("args", [])
+                if args:
+                    # El primer argumento suele ser el path al script
+                    script_path = args[0]
+                    if os.path.isabs(script_path):
+                        # Incluimos el directorio padre del script
+                        paths_to_include.add(os.path.dirname(script_path))
+            
+            for path in paths_to_include:
+                extra_args.extend(["--include-directories", path])
+                
+        except Exception as e:
+            self.logger.warning(f"⚠️  Error al detectar paths para sandbox: {e}")
+            
+        return extra_args

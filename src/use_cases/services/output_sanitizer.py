@@ -18,6 +18,7 @@ class OutputSanitizerService:
             r"falling back to greptool",
             r"ide fetch failed",
             r"failed to connect to ide",
+            r"YOLO mode is enabled", # Nuevo: Filtra el aviso de modo yolo de la CLI
             r"no previous sessions found",
             r"mcp issues detected",
             r"run /mcp list",

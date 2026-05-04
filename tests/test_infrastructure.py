@@ -25,9 +25,22 @@ def temp_dir():
 def test_local_filesystem(temp_dir):
     fs = LocalFileSystem()
     test_file = os.path.join(temp_dir, "test.txt")
-    fs.write_file(test_file, "content")
-    assert fs.read(test_file) == "content"
+    fs.write_text(test_file, "content")
+    assert fs.read_text(test_file) == "content"
     assert fs.exists(test_file) is True
+    
+    # Test directorios
+    src_dir = os.path.join(temp_dir, "src")
+    dst_dir = os.path.join(temp_dir, "dst")
+    fs.ensure_dir(src_dir)
+    fs.write_text(os.path.join(src_dir, "file.txt"), "data")
+    
+    fs.copy_directory(src_dir, dst_dir)
+    assert fs.exists(os.path.join(dst_dir, "file.txt")) is True
+    
+    fs.remove_directory(dst_dir)
+    assert fs.exists(dst_dir) is False
+    
     fs.delete(test_file)
 
 @pytest.mark.asyncio

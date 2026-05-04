@@ -96,7 +96,7 @@ tunnel_runner = CloudflareTunnelRunner(
     local_url="http://localhost:8000",
     logger=tunnel_logger
 )
-mcp_validator = MCPValidatorAdapter(fs=file_system)
+mcp_validator = MCPValidatorAdapter(fs=file_system, ai_engine=gemini_gateway)
 
 # 3. Instanciar Casos de Uso y Servicios
 validator_service = SystemValidatorService(
