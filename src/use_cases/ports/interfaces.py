@@ -170,3 +170,9 @@ class ChatHistoryGateway(ABC):
     @abstractmethod
     async def get_recent_history(self, chat_id: int, limit: int = 10) -> List[ChatMessage]:
         pass
+
+class GeminiConfigGateway(ABC):
+    @abstractmethod
+    def get_include_directories(self) -> List[str]:
+        """Obtiene la lista de directorios externos que deben incluirse en el sandbox."""
+        pass
