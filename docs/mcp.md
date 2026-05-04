@@ -2,6 +2,35 @@
 
 Este documento define cómo el sistema expande sus capacidades mediante herramientas externas, priorizando la seguridad y el aislamiento de credenciales.
 
+## 📍 Configuración Actual
+
+### Fuente de verdad: `~/.gemini/settings.json`
+
+Los servidores MCP están definidos **exclusivamente** en el archivo de configuración global de Gemini CLI (`~/.gemini/settings.json`), en la sección `mcpServers`. **No existe ninguna variable en `.env`** que declare qué MCPs usa este proyecto.
+
+Esto implica:
+*   La configuración es **local a la máquina**, no portable entre entornos.
+*   El `.env` no documenta qué servidores MCP son necesarios para operar.
+*   Un nuevo despliegue requiere configurar `~/.gemini/settings.json` manualmente.
+
+### Flujo actual de integración
+
+```
+~/.gemini/settings.json (fuente)
+        │
+        ├─► GeminiLocalConfigAdapter.get_include_directories()
+        │       → Extrae directorios de scripts MCP
+        │       → Genera flags --include-directories para el CLI
+        │
+        ├─► CredentialSyncService.sync_credentials()
+        │       → Copia settings.json a la sesión aislada
+        │       → Sanea servidores con paths inválidos
+        │
+        └─► MCPValidatorAdapter.validate()
+                → Verifica existencia física de scripts
+                → Reporta estado en el Deep Health Check
+```
+
 ## 🏗️ Arquitectura Híbrida
 
 El sistema utiliza dos patrones de transporte para comunicarse con servidores MCP:
@@ -18,6 +47,17 @@ El sistema utiliza dos patrones de transporte para comunicarse con servidores MC
 *   **Seguridad**: 
     *   **Aislamiento de Secretos**: Las API Keys críticas residen exclusivamente en el servidor periférico. El CLI de Gemini nunca tiene acceso a ellas.
     *   **Resiliencia**: El servidor puede ser reiniciado o actualizado sin afectar la sesión de chat activa.
+
+## ⚠️ Sandbox vs Include-Directories
+
+Existe una incompatibilidad entre `--sandbox` y `--include-directories`:
+
+| Modo | Comportamiento | MCPs |
+|---|---|---|
+| `--sandbox` | Filesystem aislado, confianza implícita | ❌ No puede acceder a directorios externos de MCPs |
+| Sin sandbox + `--include-directories` + `--skip-trust` | Filesystem real, confianza explícita | ✅ Acceso a directorios de MCPs |
+
+El sistema selecciona automáticamente el modo según la presencia de MCPs configurados.
 
 ## 🔒 Directrices de Seguridad
 

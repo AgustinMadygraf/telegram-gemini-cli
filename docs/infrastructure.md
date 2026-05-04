@@ -37,11 +37,12 @@ Para usuarios que utilizan `GOOGLE_AUTH`, el bot implementa una **Herencia Diná
 2.  **Robustez**: Se realiza una limpieza previa del destino (`shutil.rmtree`) para evitar archivos corruptos o sesiones bloqueadas.
 3.  **Aislamiento de Sesión**: Cada `chat_id` de Telegram opera con su propio entorno `GEMINI_CLI_HOME` independiente.
 
-### Aislamiento de Ejecución (Sandbox)
-El sistema utiliza el modo **Sandbox** nativo de Gemini CLI para proteger el código fuente:
-*   **Restricción de Directorio**: La IA solo puede ver y operar dentro de `storage/workspaces/default`.
+### Aislamiento de Ejecución (Sandbox Condicional)
+El sistema utiliza el modo **Sandbox** nativo de Gemini CLI cuando no hay servidores MCP configurados:
+*   **Con MCPs**: Se desactiva el sandbox (`--skip-trust` + `--include-directories`) para permitir acceso a los directorios de los scripts MCP.
+*   **Sin MCPs**: Se activa `--sandbox` para aislar completamente el filesystem.
+*   **Restricción de Directorio**: En modo sandbox, la IA solo puede ver y operar dentro de `storage/workspaces/default`.
 *   **Bloqueo de Escapes**: Aunque la IA intente usar rutas relativas (`../../`), el Sandbox impide el acceso a archivos fuera del workspace.
-*   **Dependencia**: Este modo utiliza aislamiento a nivel de proceso de Linux (Namespaces) y, en algunos entornos, puede requerir Docker activo para máxima compatibilidad.
 
 ### Aislamiento de Servidores MCP
 Se aplica una política de **Aislamiento por Transporte**. Los servidores que manejan datos sensibles se ejecutan fuera del host principal, comunicándose únicamente vía herramientas abstractas. 
@@ -58,8 +59,11 @@ Se aplica una política de **Aislamiento por Transporte**. Los servidores que ma
 Al iniciar, el `SystemValidatorService` ejecuta una secuencia crítica con reporte **en tiempo real** en la consola:
 1.  **Binario Gemini**: Comprueba que el CLI está instalado.
 2.  **Auth Ping (Deep Auth Check)**: Realiza una consulta mínima (`gemini -p hi`) con un timeout de seguridad.
+    *   **Errores transitorios** (Google 500, timeouts): Se loguean como WARNING pero **no bloquean** el arranque.
+    *   **Errores fatales** (API key inválida, auth fallido): Bloquean el arranque.
 3.  **Workspace Sync**: Si se define un `GEMINI_WORKSPACE`, el sistema asegura su existencia física o la crea automáticamente.
 4.  **Network Sync**: Sincroniza el Webhook con Telegram y verifica el estado del túnel.
+5.  **MCP Ecosystem**: Valida existencia física de los scripts de servidores MCP declarados.
 
 ---
 

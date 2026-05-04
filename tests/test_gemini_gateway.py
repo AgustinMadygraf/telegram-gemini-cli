@@ -92,6 +92,8 @@ async def test_ask_uses_config_gateway(adapter, mock_shell, mock_config_gateway)
     assert "--sandbox" not in cli_args
     # --skip-trust es necesario sin sandbox (workspaces de sesión no están pre-confiados)
     assert "--skip-trust" in cli_args
+    # Logger debe inyectarse para streaming en debug
+    assert kwargs.get("logger") is not None
 
 @pytest.mark.asyncio
 async def test_ask_uses_sandbox_when_no_include_dirs(adapter, mock_shell, mock_config_gateway):

@@ -206,6 +206,7 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
                 env=env, 
                 cwd=self.workspace_path, 
                 timeout=180.0,
+                logger=self.logger,
                 line_filter=self.sanitizer.noise_patterns
             )
 
@@ -232,6 +233,7 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
                         env=env, 
                         cwd=self.workspace_path, 
                         timeout=180.0,
+                        logger=self.logger,
                         line_filter=self.sanitizer.noise_patterns
                     )
                     if return_code == 0:
