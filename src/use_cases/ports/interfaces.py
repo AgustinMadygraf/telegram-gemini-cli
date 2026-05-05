@@ -37,8 +37,14 @@ class LoggerPort(ABC):
 
 class AIEngineGateway(ABC):
     @abstractmethod
-    async def ask(self, prompt: str, session: Optional[AISession] = None, attachments: List[str] = None) -> AIResponse:
-        """Envia un prompt a la IA."""
+    async def ask(
+        self, 
+        prompt: str, 
+        history: List[ChatMessage] = None,
+        session: Optional[AISession] = None, 
+        attachments: List[str] = None
+    ) -> AIResponse:
+        """Envia un prompt a la IA incluyendo el historial si está disponible."""
         pass
 
     @abstractmethod
@@ -90,10 +96,10 @@ class WebAdminGateway(ABC):
         """Configura la URL del webhook."""
         pass
 
-class CredentialValidatorGateway(ABC):
+class AIEngineValidatorGateway(ABC):
     @abstractmethod
     async def validate(self) -> bool:
-        """Valida las credenciales."""
+        """Valida que el motor de IA esté configurado y funcional."""
         pass
 
 class MCPValidatorGateway(ABC):
@@ -172,8 +178,8 @@ class ChatHistoryGateway(ABC):
     async def get_recent_history(self, chat_id: int, limit: int = 10) -> List[ChatMessage]:
         pass
 
-class GeminiConfigGateway(ABC):
+class AIConfigGateway(ABC):
     @abstractmethod
     def get_include_directories(self) -> List[str]:
-        """Obtiene la lista de directorios externos que deben incluirse en el sandbox."""
+        """Obtiene la lista de directorios externos que deben incluirse en el sandbox de la IA."""
         pass

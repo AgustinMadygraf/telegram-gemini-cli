@@ -5,15 +5,16 @@ Path: src/interface_adapters/gateways/gemini_config_adapter.py
 import os
 import json
 from typing import List
-from src.use_cases.ports.interfaces import GeminiConfigGateway, FileGateway, LoggerPort, AIEngineGateway
+from src.use_cases.ports.interfaces import AIConfigGateway, FileSystemGateway, LoggerPort, AIEngineGateway
+from src.infrastructure.setting.logger import StandardLoggerAdapter
 
-class GeminiLocalConfigAdapter(GeminiConfigGateway):
+class GeminiLocalConfigAdapter(AIConfigGateway):
     """
     Lee la configuración local de Gemini para extraer información útil 
     para la ejecución aislada (sandbox).
     """
     
-    def __init__(self, fs: FileGateway, logger: LoggerPort):
+    def __init__(self, fs: FileSystemGateway, logger: LoggerPort):
         self.fs = fs
         self.logger = logger
 
@@ -49,10 +50,9 @@ class GeminiLocalConfigAdapter(GeminiConfigGateway):
             return []
 
 class BaseMCPValidatorAdapter:
-    def __init__(self, fs: FileGateway, ai_engine: AIEngineGateway):
+    def __init__(self, fs: FileSystemGateway, ai_engine: AIEngineGateway):
         self.fs = fs
         self.ai_engine = ai_engine
-        from src.infrastructure.logging.standard_logger import StandardLoggerAdapter
         self.logger = StandardLoggerAdapter("system.mcp_validator")
     async def validate(self) -> bool:
         """

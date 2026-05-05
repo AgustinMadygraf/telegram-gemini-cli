@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from src.interface_adapters.gateways.gemini_gateway import GeminiCLIAdapter
-from src.use_cases.ports.interfaces import ShellGateway, FileSystemGateway, GeminiConfigGateway
+from src.use_cases.ports.interfaces import ShellGateway, FileSystemGateway, AIConfigGateway
 from src.use_cases.services.output_sanitizer import OutputSanitizerService
 from src.use_cases.services.credential_manager import CredentialSyncService
 from src.entities.ai_session import AISession
@@ -31,7 +31,7 @@ def mock_credential_service():
 
 @pytest.fixture
 def mock_config_gateway():
-    mock = MagicMock(spec=GeminiConfigGateway)
+    mock = MagicMock(spec=AIConfigGateway)
     mock.get_include_directories.return_value = ["/mcp/path"]
     return mock
 

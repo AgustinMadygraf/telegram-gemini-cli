@@ -6,18 +6,19 @@ import os
 from typing import Optional, List
 from src.use_cases.ports.interfaces import (
     AIEngineGateway, 
-    CredentialValidatorGateway,
+    AIEngineValidatorGateway,
     ShellGateway,
     FileSystemGateway,
     LoggerPort,
-    GeminiConfigGateway
+    AIConfigGateway
 )
 from src.entities.ai import AIResponse
 from src.entities.ai_session import AISession
+from src.entities.chat import ChatMessage
 from src.use_cases.services.output_sanitizer import OutputSanitizerService
 from src.use_cases.services.credential_manager import CredentialSyncService
 
-class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
+class GeminiCLIAdapter(AIEngineGateway, AIEngineValidatorGateway):
     def __init__(
         self, 
         shell: ShellGateway, 
@@ -25,7 +26,7 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
         logger: LoggerPort,
         sanitizer: OutputSanitizerService,
         credential_service: CredentialSyncService,
-        config_gateway: GeminiConfigGateway,
+        config_gateway: AIConfigGateway,
         binary_path: str = "gemini",
         auth_method: str = "api_key",
         api_key: Optional[str] = None,
@@ -166,11 +167,14 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
     async def ask(
         self, 
         prompt: str, 
+        history: List[ChatMessage] = None,
         session: Optional[AISession] = None, 
         attachments: List[str] = None
     ) -> AIResponse:
         """
         Envía un prompt al CLI de Gemini dentro de un entorno aislado.
+        Nota: Gemini CLI maneja su propio historial vía --resume, por lo que 'history' 
+        se ignora para evitar duplicación de contexto si el engine ya es stateful.
         """
         env = self._get_env_for_session(session)
         

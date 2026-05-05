@@ -87,8 +87,21 @@ class ProcessMessageUseCase:
             if message.photo_ids:
                 local_attachments = await self.attachments.download_attachments(message.photo_ids)
 
-            # 4.2 Consultar a la IA
-            response = await self.ai_engine.ask(message.text, session=session, attachments=local_attachments)
+            # 4.2 Obtener contexto histórico si está habilitado
+            history_context = []
+            if self.history:
+                history_context = await self.history.get_recent_history(message.chat_id, limit=10)
+                # Omitir el último mensaje (que es el actual y ya se guardó arriba) para no duplicar
+                if history_context and history_context[-1].text == message.text:
+                    history_context.pop()
+
+            # 4.3 Consultar a la IA
+            response = await self.ai_engine.ask(
+                message.text, 
+                history=history_context, 
+                session=session, 
+                attachments=local_attachments
+            )
             
             # 4.3 Registrar resultado en Circuit Breaker
             if response.success and response.text.strip():

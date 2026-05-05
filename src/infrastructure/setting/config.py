@@ -15,6 +15,9 @@ class Settings(BaseSettings):
     WEBHOOK_SECRET_TOKEN: str = ""
     CLOUDFLARE_TOKEN: str = ""
     
+    # Proveedor de IA (gemini_cli, ollama)
+    AI_PROVIDER: str = "gemini_cli"
+    
     # Configuración Gemini
     GEMINI_BINARY_PATH: str = "/usr/local/bin/gemini"
     GEMINI_AUTH_METHOD: str = "api_key"

@@ -8,7 +8,7 @@ import sys
 import os
 from src.infrastructure.setting.config import settings
 from src.infrastructure.setting.logger import setup_logger, StandardLoggerAdapter
-from src.interface_adapters.gateways.gemini_gateway import GeminiCLIAdapter
+from src.interface_adapters.gateways.ai_factory import AIEngineFactory
 from src.interface_adapters.gateways.telegram_gateway import TelegramAdapter
 from src.interface_adapters.controllers.telegram_controller import TelegramController
 from src.interface_adapters.presenters.telegram_presenter import TelegramPresenter
@@ -36,7 +36,7 @@ args_cli, _ = parser.parse_known_args() # Usamos parse_known_args para evitar co
 setup_logger()
 system_logger = StandardLoggerAdapter("system")
 shell_logger = StandardLoggerAdapter("infrastructure.shell")
-ai_logger = StandardLoggerAdapter("interface.gemini")
+ai_logger = StandardLoggerAdapter("interface.ai_engine")
 telegram_logger = StandardLoggerAdapter("interface.telegram")
 tunnel_logger = StandardLoggerAdapter("infrastructure.tunnel")
 
@@ -64,7 +64,6 @@ from src.use_cases.services.credential_manager import CredentialSyncService
 from src.use_cases.services.attachment_manager import AttachmentManager
 from src.use_cases.services.command_dispatcher import CommandDispatcher
 from src.infrastructure.sqlite3.sqlite_history import SQLiteHistoryAdapter
-from src.interface_adapters.gateways.gemini_config_adapter import GeminiLocalConfigAdapter
 
 # 1. Instanciar Infraestructura de Bajo Nivel (OS)
 shell_runner = AsyncioShellRunner(logger=shell_logger)
@@ -84,21 +83,22 @@ telegram_adapter = TelegramAdapter(
 
 # 2.1 Servicios de Dominio / Soporte
 credential_manager = CredentialSyncService(fs=file_system, logger=ai_logger)
-config_provider = GeminiLocalConfigAdapter(fs=file_system, logger=ai_logger)
 
-gemini_gateway = GeminiCLIAdapter(
-    shell=shell_runner, 
+ai_engine = AIEngineFactory.create_engine(
+    provider=settings.AI_PROVIDER,
+    shell=shell_runner,
     fs=file_system,
     logger=ai_logger,
     sanitizer=sanitizer,
     credential_service=credential_manager,
-    config_gateway=config_provider,
-    binary_path=settings.GEMINI_BINARY_PATH,
-    auth_method=settings.GEMINI_AUTH_METHOD,
-    api_key=settings.GEMINI_API_KEY,
-    vertex_project=settings.VERTEX_PROJECT_ID,
-    vertex_location=settings.VERTEX_LOCATION,
-    workspace_path=settings.GEMINI_WORKSPACE
+    config={
+        "gemini_binary_path": settings.GEMINI_BINARY_PATH,
+        "gemini_auth_method": settings.GEMINI_AUTH_METHOD,
+        "gemini_api_key": settings.GEMINI_API_KEY,
+        "vertex_project_id": settings.VERTEX_PROJECT_ID,
+        "vertex_location": settings.VERTEX_LOCATION,
+        "gemini_workspace": settings.GEMINI_WORKSPACE
+    }
 )
 
 attachment_manager = AttachmentManager(
@@ -107,7 +107,7 @@ attachment_manager = AttachmentManager(
     download_path=settings.DOWNLOADS_PATH
 )
 command_dispatcher = CommandDispatcher(
-    ai_engine=gemini_gateway, 
+    ai_engine=ai_engine, 
     messenger=telegram_adapter, 
     logger=ai_logger
 )
@@ -117,11 +117,11 @@ tunnel_runner = CloudflareTunnelRunner(
     local_url="http://localhost:8000",
     logger=tunnel_logger
 )
-mcp_validator = MCPValidatorAdapter(fs=file_system, ai_engine=gemini_gateway)
+mcp_validator = MCPValidatorAdapter(fs=file_system, ai_engine=ai_engine)
 
 # 3. Instanciar Casos de Uso y Servicios
 validator_service = SystemValidatorService(
-    validators=[gemini_gateway, telegram_adapter],
+    validators=[ai_engine, telegram_adapter],
     logger=system_logger,
     messenger=telegram_adapter, # Implementa MessageGateway
     web_admin=telegram_adapter, # Implementa WebAdminGateway
@@ -139,7 +139,7 @@ telegram_presenter = TelegramPresenter(
 )
 
 process_message_use_case = ProcessMessageUseCase(
-    ai_engine=gemini_gateway, 
+    ai_engine=ai_engine, 
     messenger=telegram_adapter, 
     presenter=telegram_presenter,
     logger=StandardLoggerAdapter("use_case.process_message"),
