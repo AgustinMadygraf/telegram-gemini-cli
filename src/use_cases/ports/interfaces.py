@@ -37,6 +37,11 @@ class LoggerPort(ABC):
 
 class AIEngineGateway(ABC):
     @abstractmethod
+    def set_debug(self, enabled: bool) -> None:
+        """Activa o desactiva el modo de depuración detallado."""
+        pass
+
+    @abstractmethod
     async def ask(
         self, 
         prompt: str, 

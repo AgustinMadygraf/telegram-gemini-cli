@@ -138,6 +138,9 @@ telegram_presenter = TelegramPresenter(
     logger=StandardLoggerAdapter("interface.presenter")
 )
 
+# 3.2 Inyección de dependencias en Casos de Uso
+ai_engine.set_debug("--debug" in sys.argv)
+
 process_message_use_case = ProcessMessageUseCase(
     ai_engine=ai_engine, 
     messenger=telegram_adapter, 

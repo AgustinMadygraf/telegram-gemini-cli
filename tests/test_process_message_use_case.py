@@ -13,7 +13,9 @@ from src.use_cases.services.command_dispatcher import CommandDispatcher
 
 @pytest.fixture
 def mock_ai():
-    return AsyncMock()
+    mock = AsyncMock()
+    mock.set_debug = MagicMock()
+    return mock
 
 @pytest.fixture
 def mock_messenger():

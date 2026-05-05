@@ -46,6 +46,7 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
         self.vertex_project = vertex_project
         self.vertex_location = vertex_location
         self.workspace_path = workspace_path if workspace_path and workspace_path.strip() else None
+        self.debug = False
         
         if self.workspace_path:
             self.logger.info(f"📂 Workspace configurado en: {self.workspace_path}")
@@ -164,6 +165,11 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
             self.logger.error(f"❌ Excepción en validador Gemini: {str(e)}")
             return False
 
+    def set_debug(self, enabled: bool) -> None:
+        """Activa el modo depuración para el motor."""
+        self.debug = enabled
+        self.logger.info(f"🔍 Modo depuración IA: {'ACTIVADO' if enabled else 'DESACTIVADO'}")
+
     async def ask(
         self, 
         prompt: str, 
@@ -197,6 +203,9 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
         if session:
             args.append("--resume")
 
+        if self.debug:
+            args.append("--debug")
+
         if attachments:
             args.extend(attachments)
 
@@ -211,7 +220,7 @@ class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
                 cwd=self.workspace_path, 
                 timeout=180.0,
                 logger=self.logger,
-                line_filter=self.sanitizer.noise_patterns
+                line_filter=self.sanitizer.noise_patterns if not self.debug else []
             )
 
             # Sanitizar y verificar
