@@ -96,10 +96,10 @@ class WebAdminGateway(ABC):
         """Configura la URL del webhook."""
         pass
 
-class AIEngineValidatorGateway(ABC):
+class CredentialValidatorGateway(ABC):
     @abstractmethod
     async def validate(self) -> bool:
-        """Valida que el motor de IA esté configurado y funcional."""
+        """Valida que el componente (IA, Mensajería, etc.) esté configurado y funcional."""
         pass
 
 class MCPValidatorGateway(ABC):

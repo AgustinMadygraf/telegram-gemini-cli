@@ -4,7 +4,7 @@ Path: src/interface_adapters/gateways/ai_factory.py
 
 from src.use_cases.ports.interfaces import (
     AIEngineGateway, 
-    AIEngineValidatorGateway, 
+    CredentialValidatorGateway, 
     ShellGateway, 
     FileSystemGateway, 
     LoggerPort,
@@ -56,10 +56,10 @@ class AIEngineFactory:
             raise ValueError(f"Proveedor de IA desconocido: {provider}")
 
     @staticmethod
-    def create_validator(engine: AIEngineGateway) -> AIEngineValidatorGateway:
+    def create_validator(engine: AIEngineGateway) -> CredentialValidatorGateway:
         """
         Retorna el validador asociado al motor.
         """
-        if isinstance(engine, AIEngineValidatorGateway):
+        if isinstance(engine, CredentialValidatorGateway):
             return engine
         raise ValueError("El motor de IA proporcionado no soporta validación de sistema.")

@@ -6,7 +6,7 @@ import os
 from typing import Optional, List
 from src.use_cases.ports.interfaces import (
     AIEngineGateway, 
-    AIEngineValidatorGateway,
+    CredentialValidatorGateway,
     ShellGateway,
     FileSystemGateway,
     LoggerPort,
@@ -18,7 +18,7 @@ from src.entities.chat import ChatMessage
 from src.use_cases.services.output_sanitizer import OutputSanitizerService
 from src.use_cases.services.credential_manager import CredentialSyncService
 
-class GeminiCLIAdapter(AIEngineGateway, AIEngineValidatorGateway):
+class GeminiCLIAdapter(AIEngineGateway, CredentialValidatorGateway):
     def __init__(
         self, 
         shell: ShellGateway, 
